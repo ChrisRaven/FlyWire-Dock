@@ -6,6 +6,7 @@
     let dock = document.createElement('div')
     dock.id = DOCK_ID
     document.body.appendChild(dock)
+    let userId = null
 
     let waitForMenu = setInterval(() => {
       let menu = document.getElementsByClassName('nge-gs-links')
@@ -18,6 +19,14 @@
       menu[0].appendChild(link)
 
       clearInterval(waitForMenu)
+    }, 100)
+
+    let waitForUserProfile = setInterval(() => {
+      userId = document.querySelector('#loggedInUserDropdown .nge-usercard-email')
+      if (userId) {
+        clearInterval(waitForUserProfile)
+        userId = userId.textContent
+      }
     }, 100)
     
 
@@ -79,7 +88,7 @@
 
         let x = this.grabbedAddon.offsetLeft
         let y = this.grabbedAddon.offsetTop
-        localStorage.setItem('kk-dock-addon-position-' + this.grabbedAddon.id, `{"x": ${x}, "y": ${y}}`)
+        localStorage.setItem(userId + '-kk-dock-addon-position-' + this.grabbedAddon.id, `{"x": ${x}, "y": ${y}}`)
         this.grabbedAddon = null
       }
 
@@ -215,7 +224,9 @@
           }
         }
 
-        let ls = localStorage.getItem('kk-dock-addon-position-' + id)
+        let ls = localStorage.getItem(userId + '-kk-dock-addon-position-' + id)
+        console.log(userId + '-kk-dock-addon-position-' + id)
+        console.log(ls)
         if (ls) {
           ls = JSON.parse(ls)
           document.getElementById(id).style.left = ls.x + 'px'
