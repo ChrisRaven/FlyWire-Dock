@@ -122,6 +122,10 @@
         let style = document.createElement('style')
         style.type = 'text/css'
         style.textContent = /*css*/`
+          :root {
+            --kk-dock-addon-button-color: #5454d3;
+          }
+
           #${DOCK_ID} {
             display: none;
             background-color: rgba(30, 30, 30, 0.95);
@@ -178,6 +182,16 @@
             background-color: rgba(30, 30, 30, 0.95);
           }
 
+          .${WRAPPER_CLASS} button {
+            color: white;
+            background-color: transparent;
+            border: 1px solid var(--kk-dock-addon-button-color);
+            border-radius: 4px;
+            margin: 2px;
+            padding: 4px 8px;
+            cursor: pointer;
+          }
+
           .hline{
             height: 1px;
             position: absolute;
@@ -226,7 +240,6 @@
 
         let ls = localStorage.getItem(userId + '-kk-dock-addon-position-' + id)
         console.log(userId + '-kk-dock-addon-position-' + id)
-        console.log(ls)
         if (ls) {
           ls = JSON.parse(ls)
           document.getElementById(id).style.left = ls.x + 'px'
