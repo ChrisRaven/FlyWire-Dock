@@ -26,11 +26,9 @@
 
     gridSize = 15
 
-    constructor(userId) {
+    constructor() {
       if (!Dock.instance) {
         Dock.instance = this
-        // this.userId = userId
-        globalThis.userId = userId
 
         this.#addStyles()
         this.#createGrid()
@@ -229,8 +227,6 @@
 
 
     addAddon({ id, name, html, css, events }) {
-      if (!name) return console.error('Dock: Missing name')
-
       if (!id) {
         id = parseInt((Math.random() * 1000000), 10)
       }
@@ -241,6 +237,8 @@
       }
 
       if (html) {
+        if (!name) return alert('Dock: Missing name')
+
         html = /*html*/`
           <div id="${id}" class="${WRAPPER_CLASS}">
             <div class="legend">
@@ -251,6 +249,15 @@
         `
 
         Dock.#container.el.insertAdjacentHTML('beforeend', html)
+
+        
+        let position = ls.get('-addon-position-' + id)
+
+        if (position) {
+          position = JSON.parse(position)
+          document.getElementById(id).style.left = position.x + 'px'
+          document.getElementById(id).style.top = position.y + 'px'
+        }
       }
       
       if (events) {
@@ -259,14 +266,6 @@
             document.querySelector(selector).addEventListener(event, e => listener(e))
           }
         }
-      }
-
-      let position = ls.get('-addon-position-' + id)
-
-      if (position) {
-        position = JSON.parse(position)
-        document.getElementById(id).style.left = position.x + 'px'
-        document.getElementById(id).style.top = position.y + 'px'
       }
     }
 
