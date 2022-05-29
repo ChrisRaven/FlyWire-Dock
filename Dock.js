@@ -241,13 +241,31 @@
       }
 
 
-      addAddon({ id, name, html, css, events }) {
+      addAddon({ id, name, html, css, events, options }) {
         if (css) {
           css = `<style>${css}</style>`
           document.head.insertAdjacentHTML('beforeend', css)
         }
 
-        if (html) {
+        this.#addAddonHtml(id, name, html, options)
+
+        if (events) {
+          for (const [selector, value] of Object.entries(events)) {
+            for (const [event, listener] of Object.entries(value)) {
+              document.querySelector(selector).addEventListener(event, e => listener(e))
+            }
+          }
+        }
+      }
+
+
+      #addAddonHtml(id, name, html, options) {
+        if (!html) return
+
+        if (options && options.htmlOutsideDock) {
+          document.body.insertAdjacentHTML(html)
+        }
+        else {
           if (!name) return alert('Dock: Missing name')
           if (!id) return alert('Dock: missing ID')
 
@@ -269,14 +287,6 @@
             position = JSON.parse(position)
             document.getElementById(id).style.left = position.x + 'px'
             document.getElementById(id).style.top = position.y + 'px'
-          }
-        }
-        
-        if (events) {
-          for (const [selector, value] of Object.entries(events)) {
-            for (const [event, listener] of Object.entries(value)) {
-              document.querySelector(selector).addEventListener(event, e => listener(e))
-            }
           }
         }
       }
