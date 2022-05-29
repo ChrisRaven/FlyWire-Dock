@@ -261,13 +261,23 @@
 
       #addAddonHtml(id, name, html, options) {
         if (!html) return
+        if (typeof html === 'function') return html()
+
+        if (typeof html === 'object') {
+          let target = document.querySelector(html.insert.target)
+          if (!target) return console.error('Dock: HTML target doesn\'t exist')
+
+          target.insertAdjacentHTML(html.insert.position, html.text)
+
+          return
+        }
 
         if (options && options.htmlOutsideDock) {
-          document.body.insertAdjacentHTML(html)
+          document.body.insertAdjacentHTML('beforeend', html)
         }
         else {
-          if (!name) return alert('Dock: Missing name')
-          if (!id) return alert('Dock: missing ID')
+          if (!name) return console.error('Dock: Missing name')
+          if (!id) return console.error('Dock: missing ID')
 
           html = /*html*/`
             <div id="${id}" class="${WRAPPER_CLASS}">
