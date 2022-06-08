@@ -5,19 +5,19 @@
 
   if (globalThis.dockIsReady) return
 
-  let waitUntilReady = setInterval(() => {
+  let waitUntilReady = setInterval(waitUntilReadyCallback, 100)
+
+  function waitUntilReadyCallback() {
     userId = document.querySelector('#loggedInUserDropdown .nge-usercard-email')
     if (!userId) return
 
     clearInterval(waitUntilReady)
     // dockIsReady could be set in the meantime by another instance of the script
     if (globalThis.dockIsReady) return
-
     userId = userId.textContent
-    main()
     globalThis.dockIsReady = true
-  }, 100)
-
+    main()
+  }
   
   let ls = {
     get(key) {
@@ -30,6 +30,27 @@
 
   function main() {
     const dockElement = prepare()
+
+    // proxy for fetch
+    let f = globalThis.fetch
+    globalThis.fetch = async (...args) => {
+      let res = f(...args)
+
+      res
+        .then(result => result.clone())
+        .then(result => result.json())
+        .then(result => {
+          document.dispatchEvent(new CustomEvent('fetch', {
+            detail: {
+              args: args,
+              result: result
+            }
+          }))
+      })
+
+      return res
+    }
+
 
     globalThis.Dock = class {
       static #instance = null
@@ -62,6 +83,7 @@
 
         return Dock.instance
       }
+      
 
       #editableMouseDownHandler(e) {
         if (!this.editable) return
@@ -242,18 +264,28 @@
 
 
       addAddon({ id, name, html, css, events, options }) {
-        if (css) {
-          css = `<style>${css}</style>`
-          document.head.insertAdjacentHTML('beforeend', css)
-        }
-
+        this.#addAddonCss(css)
         this.#addAddonHtml(id, name, html, options)
+        this.#addAddonEvents(events)
+      }
 
-        if (events) {
-          for (const [selector, value] of Object.entries(events)) {
-            for (const [event, listener] of Object.entries(value)) {
-              document.querySelector(selector).addEventListener(event, e => listener(e))
-            }
+      
+      #addAddonCss(css) {
+        if (!css) return
+
+        css = `<style>${css}</style>`
+        document.head.insertAdjacentHTML('beforeend', css)
+      }
+
+
+      #addAddonEvents(events) {
+        if (!events) return
+
+        for (const [selector, value] of Object.entries(events)) {
+          for (const [eventName, listener] of Object.entries(value)) {
+            document.querySelectorAll(selector).forEach(el => {
+              el.addEventListener(eventName, e => listener(e))
+            })
           }
         }
       }
