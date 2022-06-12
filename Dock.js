@@ -19,14 +19,6 @@
     main()
   }
   
-  let ls = {
-    get(key) {
-      return localStorage.getItem(`${userId}-${DOCK_ID}-${key}`)
-    },
-    set(key, value) {
-      localStorage.setItem(`${userId}-${DOCK_ID}-${key}`, value)
-    }
-  }
 
   function main() {
     const dockElement = prepare()
@@ -37,18 +29,27 @@
       let res = f(...args)
 
       res
-        .then(result => result.clone())
-        .then(result => result.json())
-        .then(result => {
+        .then(response => response.clone())
+        .then(response => response.json())
+        .then(response => {
           document.dispatchEvent(new CustomEvent('fetch', {
             detail: {
-              args: args,
-              result: result
+              url: args[0],
+              params: args[1],
+              response: response
             }
           }))
       })
 
       return res
+    }
+
+
+    function toggleAddonsWrapper() {
+      // source why window.getComputedStyle(): https://stackoverflow.com/a/2298849
+      let isClosed = window.getComputedStyle(dockElement).display === 'none'
+      dockElement.style.display = isClosed ? 'flex' : 'none'
+      localStorage.setItem(`${userId}-${DOCK_ID}-is-closed`, isClosed)
     }
 
 
@@ -60,6 +61,24 @@
       }
       static userId = userId
 
+      static ls = {
+        keyPrefix: `${userId}-${DOCK_ID}-`,
+        get(key, JSONparse = false) {
+          let value = localStorage.getItem(Dock.ls.keyPrefix + key)
+          return JSONparse && value ? JSON.parse(value) : value
+        },
+
+        set(key, value, JSONstringify = false) {
+          value = JSONstringify && value ? JSON.stringify(value) : value
+          localStorage.setItem(Dock.ls.keyPrefix + key, value)
+        },
+
+        remove(key) {
+          localStorage.removeItem(Dock.ls.keyPrefix + key)
+        }
+      }
+
+      
       gridSize = 15
 
       constructor() {
@@ -79,11 +98,14 @@
           Dock.#container.el.addEventListener('mousedown', (e) => this.#editableMouseDownHandler(e))
           Dock.#container.el.addEventListener('mouseup'  , (e) => this.#editableMouseUpHandler(e))
           Dock.#container.el.addEventListener('mousemove', (e) => this.#editableMouseMoveHandler(e))
+          if (Dock.ls.get('is-closed') !== 'false') {
+            toggleAddonsWrapper()
+          }
         }
 
         return Dock.instance
       }
-      
+
 
       #editableMouseDownHandler(e) {
         if (!this.editable) return
@@ -108,7 +130,7 @@
 
         let x = this.grabbedAddon.offsetLeft
         let y = this.grabbedAddon.offsetTop
-        ls.set('-addon-position-' + this.grabbedAddon.id, `{"x": ${x}, "y": ${y}}`)
+        Dock.ls.set('addon-position-' + this.grabbedAddon.id, `{"x": ${x}, "y": ${y}}`)
         this.grabbedAddon = null
       }
 
@@ -146,21 +168,20 @@
       }
 
       #resizeButtonHandle() {
-        let size = ls.get('size')
-        let width = 400
-        let height = 200
-        if (size) {
-          [width, height] = JSON.parse(size)
-        }
+        let size = Dock.ls.get('size', true)
+        let width = size.width || 400
+        let height = size.height || 200
 
         let dialog = new ResizeDialog({
           width: width,
           height: height,
           okCallback: (newWidth, newHeight) => {
-            let newSize = JSON.stringify({ width: newWidth, height: newHeight })
-            ls.set('size', newSize)
+            Dock.ls.set('size', { width: newWidth, height: newHeight }, true)
             Dock.#container.el.style.width = newWidth + 'px'
             Dock.#container.el.style.height = newHeight + 'px'
+            if (this.editable) {
+              this.#resetGrid()
+            }
           }
         })
 
@@ -247,6 +268,11 @@
             cursor: pointer;
           }
 
+          #${DOCK_ID}-grid {
+            display: none;
+            z-index: -1;
+          }
+
           .hline{
             height: 1px;
             position: absolute;
@@ -322,11 +348,8 @@
 
           Dock.#container.el.insertAdjacentHTML('beforeend', html)
 
-          
-          let position = ls.get('-addon-position-' + id)
-
+          let position = Dock.ls.get('addon-position-' + id, true)
           if (position) {
-            position = JSON.parse(position)
             document.getElementById(id).style.left = position.x + 'px'
             document.getElementById(id).style.top = position.y + 'px'
           }
@@ -338,13 +361,20 @@
         let frag = document.createDocumentFragment()
         let wrapper = document.createElement('div')
         wrapper.id = DOCK_ID + '-grid'
-        wrapper.style.display = 'none'
         frag = frag.appendChild(wrapper)
+        let wasHidden = false
 
-        dockElement.style.display = 'flex'
+        if (window.getComputedStyle(dockElement).display === 'none') {
+          dockElement.style.display = 'flex'
+          wasHidden = true
+        }
+
         let width = dockElement.offsetWidth
         let height = dockElement.offsetHeight
-        dockElement.style.display = 'none'
+
+        if (wasHidden) {
+          dockElement.style.display = 'none'
+        }
 
         for (let i = 0; i <= width; i += this.gridSize) {
           let div = document.createElement('div')
@@ -363,6 +393,14 @@
         }
 
         this.grid = dockElement.appendChild(frag)
+      }
+
+
+      #resetGrid() {
+        this.#toggleGrid()
+        this.grid.remove()
+        this.#createGrid()
+        this.#toggleGrid()
       }
 
 
@@ -522,14 +560,10 @@
     }
     // END of ResizeDialog class
 
-    
-    function prepare() {
-      function toggleAddonsWraper() {
-        // source why window.getComputedStyle(): https://stackoverflow.com/a/2298849
-        dockElement.style.display = window.getComputedStyle(dockElement).display === 'none' ? 'flex' : 'none'
-      }
 
-      let size = ls.get('size')
+    function prepare() {
+      // Dock.ls.get() isn't ready at this moment
+      let size = localStorage.getItem(`${userId}-${DOCK_ID}-size`)
       let width = 400
       let height = 200
       if (size) {
@@ -542,8 +576,8 @@
       dockElement.style.width = width + 'px'
       dockElement.style.height = height + 'px'
       document.body.appendChild(dockElement)
-
-      let waitForMenu = setInterval(() => {
+      
+      let waitForMenuCallback = () => {
         let menu = document.getElementsByClassName('nge-gs-links')
         if (!menu.length) return
 
@@ -552,9 +586,11 @@
         let link = document.createElement('div')
         link.classList.add('nge-gs-link')
         link.innerHTML = '<button>Addons</button>'
-        link.addEventListener('click', toggleAddonsWraper)
+        link.addEventListener('click', toggleAddonsWrapper)
         menu[0].appendChild(link)
-      }, 100)
+      }
+
+      let waitForMenu = setInterval(waitForMenuCallback, 100)
 
       return dockElement
     }
