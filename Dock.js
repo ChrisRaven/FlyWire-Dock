@@ -169,8 +169,8 @@
 
       #resizeButtonHandle() {
         let size = Dock.ls.get('size', true)
-        let width = size.width || 400
-        let height = size.height || 200
+        let width = size ? size.width : 400
+        let height = size ? size.height : 200
 
         let dialog = new ResizeDialog({
           width: width,
