@@ -79,7 +79,13 @@
       }
 
       
-      gridSize = 15
+      #gridSize = 15
+      #moving = false
+      #editable = false
+      #grabbedAddon = false
+      #movingDifference = {}
+      #grid = false
+
 
       constructor() {
         if (!Dock.instance) {
@@ -88,10 +94,26 @@
           this.#addStyles()
           this.#createGrid()
 
-          this.#creatPositionAddonsButton()
-          this.#createResizeDockButton()
-          this.editable = false
-          this.grabbedAddon = null
+          this.#createDockButton('organize-button', 'O', () => this.#organizeButtonHandle())
+          this.#createDockButton('resize-button', 'R', () => this.#resizeButtonHandle())
+          
+          let moveButton = this.#createDockButton('move-button', 'M')
+          document.addEventListener('mousemove', e => this.#moveButtonHandle(e))
+          moveButton.addEventListener('mousedown', e => this.#moveButtonMouseDownHandler(e))
+          document.addEventListener('mouseup', e => {
+            if (this.#moving) {
+              this.#moving = false
+              Dock.ls.set('position', {
+                top: Dock.#container.el.style.top,
+                left: Dock.#container.el.style.left
+              }, true)
+            }
+          })
+          
+          this.#editable = false
+          this.#grabbedAddon = null
+          this.#moving = false
+          this.#movingDifference = {}
           Dock.#container.style = window.getComputedStyle(Dock.#container.el)
 
 
@@ -101,14 +123,42 @@
           if (Dock.ls.get('is-closed') !== 'false') {
             toggleAddonsWrapper()
           }
+          let dockPosition = Dock.ls.get('position', true)
+          let dockElement = Dock.#container.el
+          let dockElementStyle = dockElement.style
+          if (!dockPosition) {
+            let dockStyles = window.getComputedStyle(dockElement)
+            dockElementStyle.top = 0
+            let windowWidth = window.innerWidth
+            let dockWidth = windowWidth - parseInt(dockStyles.width, 10)
+            dockElementStyle.left = window.innerWidth / 2 - parseInt(dockStyles.width, 10) / 2 + 'px'
+          }
+          else {
+            dockElementStyle.top = dockPosition.top
+            dockElementStyle.left = dockPosition.left
+          }
         }
 
         return Dock.instance
       }
 
 
+      #moveButtonMouseDownHandler(e) {
+        if (!e.buttons === 1) return
+
+        let dockElement = Dock.#container.el
+        let style = window.getComputedStyle(dockElement)
+
+        this.#moving = true
+        this.#movingDifference = {
+          x: e.clientX - parseInt(style.left, 10),
+          y: e.clientY - parseInt(style.top, 10)
+        }
+      }
+
+
       #editableMouseDownHandler(e) {
-        if (!this.editable) return
+        if (!this.#editable) return
         if (!e.target.classList.contains('legend') && !e.target.parentElement.classList.contains('legend')) return
 
         let addon = e.target
@@ -116,56 +166,54 @@
           addon = addon.parentElement
         }
 
-        this.grabbedAddon = addon
+        this.#grabbedAddon = addon
 
         // Source: https://esstudio.site/2018/11/01/create-draggable-elements-with-javascript.html
-        this.X = e.clientX - this.grabbedAddon.style.left.slice(0, -2);
-        this.Y = e.clientY - this.grabbedAddon.style.top.slice(0, -2);
+        this.X = e.clientX - this.#grabbedAddon.style.left.slice(0, -2);
+        this.Y = e.clientY - this.#grabbedAddon.style.top.slice(0, -2);
       }
 
 
       #editableMouseUpHandler(e) {
-        if (!this.editable) return
-        if (!this.grabbedAddon) return
+        if (!this.#editable) return
+        if (!this.#grabbedAddon) return
 
-        let x = this.grabbedAddon.offsetLeft
-        let y = this.grabbedAddon.offsetTop
-        Dock.ls.set('addon-position-' + this.grabbedAddon.id, `{"x": ${x}, "y": ${y}}`)
-        this.grabbedAddon = null
+        let x = this.#grabbedAddon.offsetLeft
+        let y = this.#grabbedAddon.offsetTop
+        Dock.ls.set('addon-position-' + this.#grabbedAddon.id, `{"x": ${x}, "y": ${y}}`)
+        this.#grabbedAddon = null
       }
 
 
       #editableMouseMoveHandler(e) {
-        if (!this.editable) return
-        if (!this.grabbedAddon) return
+        if (!this.#editable) return
+        if (!this.#grabbedAddon) return
 
         // Source: https://esstudio.site/2018/11/01/create-draggable-elements-with-javascript.html
-        this.grabbedAddon.style.left = Math.floor((e.clientX - this.X) / this.gridSize) * this.gridSize + 'px';
-        this.grabbedAddon.style.top = Math.floor((e.clientY - this.Y) / this.gridSize) * this.gridSize + 'px';
+        this.#grabbedAddon.style.left = Math.floor((e.clientX - this.X) / this.#gridSize) * this.#gridSize + 'px';
+        this.#grabbedAddon.style.top = Math.floor((e.clientY - this.Y) / this.#gridSize) * this.#gridSize + 'px';
       }
 
 
-      #creatPositionAddonsButton() {
-        let editButton = document.createElement('button')
-        editButton.id = DOCK_ID + '-position-addons-button'
-        editButton.textContent = 'A'
-        editButton.addEventListener('click', () => this.#positionAddonsButtonHandle())
-        Dock.#container.el.appendChild(editButton)
-      }
+      #createDockButton(id, name, handler, event = 'click') {
+        let button = document.createElement('button')
+        button.id = DOCK_ID + '-' + id
+        button.textContent = name
+        button.classList.add(DOCK_ID + '-aux-button')
+        if (handler) {
+          button.addEventListener(event, handler)
+        }
+        Dock.#container.el.appendChild(button)
 
-      #createResizeDockButton() {
-        let resizeButton = document.createElement('button')
-        resizeButton.id = DOCK_ID + '-resize-dock-button'
-        resizeButton.textContent = 'R'
-        resizeButton.addEventListener('click', () => this.#resizeButtonHandle())
-        Dock.#container.el.appendChild(resizeButton)
+        return button
       }
 
 
-      #positionAddonsButtonHandle() {
+      #organizeButtonHandle() {
         this.#toggleGrid()
-        this.editable = !this.editable
+        this.#editable = !this.#editable
       }
+
 
       #resizeButtonHandle() {
         let size = Dock.ls.get('size', true)
@@ -179,13 +227,32 @@
             Dock.ls.set('size', { width: newWidth, height: newHeight }, true)
             Dock.#container.el.style.width = newWidth + 'px'
             Dock.#container.el.style.height = newHeight + 'px'
-            if (this.editable) {
+            if (this.#editable) {
               this.#resetGrid()
             }
           }
         })
 
         dialog.show()
+      }
+
+      #moveButtonHandle(e) {
+        if (!this.#moving) return
+
+        let mousePosition = { x: e.clientX, y: e.clientY }
+        let dockElement = Dock.#container.el
+        let style = window.getComputedStyle(dockElement)
+        let dockPosition = { x: parseInt(style.left, 10), y: parseInt(style.top, 10) }
+        let dockSize = { width: parseInt(style.width, 10), height: parseInt(style.height, 10) }
+
+        let left = mousePosition.x - this.#movingDifference.x
+        let top = mousePosition.y - this.#movingDifference.y
+        if (left < 0) left = 0
+        if (top < 0) top = 0
+        if (left + dockSize.width > window.innerWidth) left = window.innerWidth - dockSize.width
+        if (top + dockSize.height > window.innerHeight) top = window.innerHeight - dockSize.height
+        dockElement.style.left = left + 'px'
+        dockElement.style.top = top + 'px'
       }
 
 
@@ -199,7 +266,7 @@
 
           #${DOCK_ID} {
             display: none;
-            background-color: rgba(30, 30, 30, 0.95);
+            background-color: rgba(30, 30, 30, 0.8);
             position: absolute;
             top: 0;
             left: 0;
@@ -207,15 +274,11 @@
             align-items: flex-start;
             flex-wrap: wrap;
             top: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            border-radius: 4px;
+            border-radius: 10px;
           }
 
-          #${DOCK_ID}-position-addons-button,
-          #${DOCK_ID}-resize-dock-button {
+          .${DOCK_ID}-aux-button {
             position: absolute;
-            top: 0;
             right: 0;
             height: 15px;
             width: 15px;
@@ -226,11 +289,19 @@
             border-radius: 2px;
             cursor: pointer;
             color: white;
-            border: 1px solid rgba(30, 30, 30, 0.95);
+            border: 1px solid rgba(30, 30, 30, 0.8);
           }
 
-          #${DOCK_ID}-resize-dock-button {
+          #${DOCK_ID}-organize-button {
+            top: 0px;
+          }
+
+          #${DOCK_ID}-resize-button {
             top: 15px;
+          }
+
+          #${DOCK_ID}-move-button {
+            top: 30px;
           }
 
           .${WRAPPER_CLASS} {
@@ -376,7 +447,7 @@
           dockElement.style.display = 'none'
         }
 
-        for (let i = 0; i <= width; i += this.gridSize) {
+        for (let i = 0; i <= width; i += this.#gridSize) {
           let div = document.createElement('div')
           div.classList.add('vline')
           div.style.left = i + 'px'
@@ -384,7 +455,7 @@
           frag.appendChild(div)
         }
 
-        for (let i = 0; i <= height; i += this.gridSize) {
+        for (let i = 0; i <= height; i += this.#gridSize) {
           let div = document.createElement('div')
           div.classList.add('hline')
           div.style.top = i + 'px'
@@ -392,20 +463,20 @@
           frag.appendChild(div)
         }
 
-        this.grid = dockElement.appendChild(frag)
+        this.#grid = dockElement.appendChild(frag)
       }
 
 
       #resetGrid() {
         this.#toggleGrid()
-        this.grid.remove()
+        this.#grid.remove()
         this.#createGrid()
         this.#toggleGrid()
       }
 
 
       #toggleGrid() {
-        this.grid.style.display = window.getComputedStyle(this.grid).display === 'none' ? 'block' : 'none'        
+        this.#grid.style.display = window.getComputedStyle(this.#grid).display === 'none' ? 'block' : 'none'        
       }
     }
     // END of Dock class
