@@ -88,57 +88,49 @@
 
 
       constructor() {
-        if (!Dock.instance) {
-          Dock.instance = this
+        if (Dock.instance) return Dock.instance
 
-          this.#addStyles()
-          this.#createGrid()
+        Dock.instance = this
 
-          this.#createDockButton({
-            id: 'organize-button',
-            name: 'O',
-            tooltip: 'Organize addons',
-            handler: () => this.#organizeButtonHandle()
-          })
+        this.#addStyles()
+        this.#createGrid()
+        this.#createAuxButtons()
 
-          this.#createDockButton({
-            id: 'resize-button',
-            name: 'R',
-            tooltip: 'Resize Dock',
-            handler: () => this.#resizeButtonHandle()
-          })
-          
-          let moveButton = this.#createDockButton({
-            id: 'move-button',
-            name: 'M',
-            tooltip: 'Move Dock'
-          })
-          document.addEventListener('mousemove', e => this.#moveButtonHandle(e))
-          moveButton.addEventListener('mousedown', e => this.#moveButtonMouseDownHandler(e))
-          document.addEventListener('mouseup', e => {
-            if (this.#moving) {
-              this.#moving = false
-              Dock.ls.set('position', {
-                top: Dock.#container.el.style.top,
-                left: Dock.#container.el.style.left
-              }, true)
-            }
-          })
-
-          Dock.#container.style = window.getComputedStyle(Dock.#container.el)
-
-
-          Dock.#container.el.addEventListener('mousedown', (e) => this.#editableMouseDownHandler(e))
-          Dock.#container.el.addEventListener('mouseup'  , (e) => this.#editableMouseUpHandler(e))
-          Dock.#container.el.addEventListener('mousemove', (e) => this.#editableMouseMoveHandler(e))
-          if (Dock.ls.get('is-closed') !== 'false') {
-            toggleAddonsWrapper()
-          }
-
-          this.#positionDock()
+        Dock.#container.el.addEventListener('mousedown', (e) => this.#editableMouseDownHandler(e))
+        Dock.#container.el.addEventListener('mousemove', (e) => this.#editableMouseMoveHandler(e))
+        Dock.#container.el.addEventListener('mouseup'  , (e) => this.#editableMouseUpHandler(e))
+        if (Dock.ls.get('is-closed') !== 'false') {
+          toggleAddonsWrapper()
         }
 
-        return Dock.instance
+        this.#positionDock()
+      }
+
+
+      #createAuxButtons() {
+        this.#createDockButton({
+          id: 'organize-button',
+          name: 'O',
+          tooltip: 'Organize addons',
+          handler: () => this.#organizeButtonHandler()
+        })
+
+        this.#createDockButton({
+          id: 'resize-button',
+          name: 'R',
+          tooltip: 'Resize Dock',
+          handler: () => this.#resizeButtonHandler()
+        })
+        
+        let moveButton = this.#createDockButton({
+          id: 'move-button',
+          name: 'M',
+          tooltip: 'Move Dock'
+        })
+
+        moveButton.addEventListener('mousedown', e => this.#moveButtonMouseDownHandler(e))
+        document.addEventListener('mousemove', e => this.#moveButtonHandler(e))
+        document.addEventListener('mouseup', e => this.#moveButtonMouseUpHandler(e))
       }
 
 
@@ -170,6 +162,17 @@
         this.#movingDifference = {
           x: e.clientX - parseInt(style.left, 10),
           y: e.clientY - parseInt(style.top, 10)
+        }
+      }
+
+      
+      #moveButtonMouseUpHandler(e) {
+        if (this.#moving) {
+          this.#moving = false
+          Dock.ls.set('position', {
+            top: Dock.#container.el.style.top,
+            left: Dock.#container.el.style.left
+          }, true)
         }
       }
 
@@ -219,7 +222,7 @@
         button.title = tooltip
         button.classList.add(DOCK_ID + '-aux-button')
         if (handler) {
-          button.addEventListener(event, handler)
+          button.addEventListener('click', handler)
         }
         Dock.#container.el.appendChild(button)
 
@@ -227,13 +230,13 @@
       }
 
 
-      #organizeButtonHandle() {
+      #organizeButtonHandler() {
         this.#toggleGrid()
         this.#editable = !this.#editable
       }
 
 
-      #resizeButtonHandle() {
+      #resizeButtonHandler() {
         let size = Dock.ls.get('size', true)
         let width = size ? size.width : 400
         let height = size ? size.height : 200
@@ -254,7 +257,7 @@
         dialog.show()
       }
 
-      #moveButtonHandle(e) {
+      #moveButtonHandler(e) {
         if (!this.#moving) return
 
         let mousePosition = { x: e.clientX, y: e.clientY }
