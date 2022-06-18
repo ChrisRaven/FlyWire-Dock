@@ -47,18 +47,15 @@
 
     function toggleAddonsWrapper() {
       // source why window.getComputedStyle(): https://stackoverflow.com/a/2298849
-      let isClosed = window.getComputedStyle(dockElement).display === 'none'
-      dockElement.style.display = isClosed ? 'flex' : 'none'
+      let isClosed = window.getComputedStyle(Dock.element).display === 'none'
+      Dock.element.style.display = isClosed ? 'flex' : 'none'
       localStorage.setItem(`${userId}-${DOCK_ID}-is-closed`, isClosed)
     }
 
 
     globalThis.Dock = class {
       static #instance = null
-      static #container = {
-        el: document.getElementById(DOCK_ID),
-        style: null
-      }
+      static element = dockElement
       static userId = userId
 
       static ls = {
@@ -96,9 +93,9 @@
         this.#createGrid()
         this.#createAuxButtons()
 
-        Dock.#container.el.addEventListener('mousedown', (e) => this.#editableMouseDownHandler(e))
-        Dock.#container.el.addEventListener('mousemove', (e) => this.#editableMouseMoveHandler(e))
-        Dock.#container.el.addEventListener('mouseup'  , (e) => this.#editableMouseUpHandler(e))
+        Dock.element.addEventListener('mousedown', (e) => this.#editableMouseDownHandler(e))
+        Dock.element.addEventListener('mousemove', (e) => this.#editableMouseMoveHandler(e))
+        Dock.element.addEventListener('mouseup'  , (e) => this.#editableMouseUpHandler(e))
         if (Dock.ls.get('is-closed') !== 'false') {
           toggleAddonsWrapper()
         }
@@ -108,21 +105,21 @@
 
 
       #createAuxButtons() {
-        this.#createDockButton({
+        this.#createAuxButton({
           id: 'organize-button',
           name: 'O',
           tooltip: 'Organize addons',
           handler: () => this.#organizeButtonHandler()
         })
 
-        this.#createDockButton({
+        this.#createAuxButton({
           id: 'resize-button',
           name: 'R',
           tooltip: 'Resize Dock',
           handler: () => this.#resizeButtonHandler()
         })
         
-        let moveButton = this.#createDockButton({
+        let moveButton = this.#createAuxButton({
           id: 'move-button',
           name: 'M',
           tooltip: 'Move Dock'
@@ -131,32 +128,51 @@
         moveButton.addEventListener('mousedown', e => this.#moveButtonMouseDownHandler(e))
         document.addEventListener('mousemove', e => this.#moveButtonHandler(e))
         document.addEventListener('mouseup', e => this.#moveButtonMouseUpHandler(e))
+        window.addEventListener('resize', e => this.#resizeWindowHandler(e))
       }
 
 
       #positionDock() {
         let dockPosition = Dock.ls.get('position', true)
-        let dockElement = Dock.#container.el
-        let dockElementStyle = dockElement.style
+        let dockElementStyle = Dock.element.style
         if (!dockPosition) {
-          let dockStyles = window.getComputedStyle(dockElement)
+          let dockStyles = window.getComputedStyle(Dock.element)
           dockElementStyle.top = 0
           let windowWidth = window.innerWidth
           let dockWidth = windowWidth - parseInt(dockStyles.width, 10)
           dockElementStyle.left = window.innerWidth / 2 - parseInt(dockStyles.width, 10) / 2 + 'px'
         }
         else {
-          dockElementStyle.top = dockPosition.top
-          dockElementStyle.left = dockPosition.left
+          this.#repositionDock(dockPosition.left, dockPosition.top)
         }
+      }
+
+
+      #repositionDock(x, y) {
+        let style = Dock.element.style
+        let dockWidth = parseInt(style.width, 10)
+        let dockHeight = parseInt(style.height, 10)
+        if (x < 0) x = 0
+        if (y < 0) y = 0
+        if (x + dockWidth > window.innerWidth) x = window.innerWidth - dockWidth
+        if (y + dockHeight > window.innerHeight) y = window.innerHeight - dockHeight
+        Dock.element.style.left = x + 'px'
+        Dock.element.style.top = y + 'px'
+      }
+
+
+      #resizeWindowHandler() {
+        let style = Dock.element.style
+        let x = parseInt(style.left, 10)
+        let y = parseInt(style.top, 10)
+        this.#repositionDock(x, y)
       }
 
 
       #moveButtonMouseDownHandler(e) {
         if (!e.buttons === 1) return
 
-        let dockElement = Dock.#container.el
-        let style = window.getComputedStyle(dockElement)
+        let style = window.getComputedStyle(Dock.element)
 
         this.#moving = true
         this.#movingDifference = {
@@ -170,8 +186,8 @@
         if (this.#moving) {
           this.#moving = false
           Dock.ls.set('position', {
-            top: Dock.#container.el.style.top,
-            left: Dock.#container.el.style.left
+            top: parseInt(Dock.element.style.top, 10),
+            left: parseInt(Dock.element.style.left, 10)
           }, true)
         }
       }
@@ -215,7 +231,7 @@
       }
 
 
-      #createDockButton({ id, name, handler, tooltip = '' }) {
+      #createAuxButton({ id, name, handler, tooltip = '' }) {
         let button = document.createElement('button')
         button.id = DOCK_ID + '-' + id
         button.textContent = name
@@ -224,7 +240,7 @@
         if (handler) {
           button.addEventListener('click', handler)
         }
-        Dock.#container.el.appendChild(button)
+        Dock.element.appendChild(button)
 
         return button
       }
@@ -246,8 +262,8 @@
           height: height,
           okCallback: (newWidth, newHeight) => {
             Dock.ls.set('size', { width: newWidth, height: newHeight }, true)
-            Dock.#container.el.style.width = newWidth + 'px'
-            Dock.#container.el.style.height = newHeight + 'px'
+            Dock.element.style.width = newWidth + 'px'
+            Dock.element.style.height = newHeight + 'px'
             if (this.#editable) {
               this.#resetGrid()
             }
@@ -260,20 +276,9 @@
       #moveButtonHandler(e) {
         if (!this.#moving) return
 
-        let mousePosition = { x: e.clientX, y: e.clientY }
-        let dockElement = Dock.#container.el
-        let style = window.getComputedStyle(dockElement)
-        let dockPosition = { x: parseInt(style.left, 10), y: parseInt(style.top, 10) }
-        let dockSize = { width: parseInt(style.width, 10), height: parseInt(style.height, 10) }
-
-        let left = mousePosition.x - this.#movingDifference.x
-        let top = mousePosition.y - this.#movingDifference.y
-        if (left < 0) left = 0
-        if (top < 0) top = 0
-        if (left + dockSize.width > window.innerWidth) left = window.innerWidth - dockSize.width
-        if (top + dockSize.height > window.innerHeight) top = window.innerHeight - dockSize.height
-        dockElement.style.left = left + 'px'
-        dockElement.style.top = top + 'px'
+        let left = e.clientX - this.#movingDifference.x
+        let top = e.clientY - this.#movingDifference.y
+        this.#repositionDock(left, top)
       }
 
 
@@ -438,7 +443,7 @@
             </div>
           `
 
-          Dock.#container.el.insertAdjacentHTML('beforeend', html)
+          Dock.element.insertAdjacentHTML('beforeend', html)
 
           let position = Dock.ls.get('addon-position-' + id, true)
           if (position) {
@@ -456,16 +461,16 @@
         frag = frag.appendChild(wrapper)
         let wasHidden = false
 
-        if (window.getComputedStyle(dockElement).display === 'none') {
-          dockElement.style.display = 'flex'
+        if (window.getComputedStyle(Dock.element).display === 'none') {
+          Dock.element.style.display = 'flex'
           wasHidden = true
         }
 
-        let width = dockElement.offsetWidth
-        let height = dockElement.offsetHeight
+        let width = Dock.element.offsetWidth
+        let height = Dock.element.offsetHeight
 
         if (wasHidden) {
-          dockElement.style.display = 'none'
+          Dock.element.style.display = 'none'
         }
 
         for (let i = 0; i <= width; i += this.#gridSize) {
@@ -484,7 +489,7 @@
           frag.appendChild(div)
         }
 
-        this.#grid = dockElement.appendChild(frag)
+        this.#grid = Dock.element.appendChild(frag)
       }
 
 
