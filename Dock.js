@@ -504,6 +504,65 @@
       #toggleGrid() {
         this.#grid.style.display = window.getComputedStyle(this.#grid).display === 'none' ? 'block' : 'none'        
       }
+
+      // helper methods
+      static getSegmentId(x, y, z, callback) {
+        GM_xmlhttpRequest({
+          method: 'POST',
+          url: 'https://services.itanna.io/app/transform-service/query/dataset/flywire_190410/s/2/values_array_string_response',
+          data: `{"x":[${x}],"y":[${y}],"z":[${z}]}`,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          },
+          onload: response => response && callback(JSON.parse(response.response).values[0][0])
+        })
+      }
+
+
+      static getRootId(supervoxelId, callback) {
+        let authToken = localStorage.getItem('auth_token')
+      
+        fetch(`https://prodv1.flywire-daf.com/segmentation/api/v1/table/fly_v31/node/${supervoxelId}/root?int64_as_str=1&middle_auth_token=${authToken}`)
+          .then(response => response.json())
+          .then(response => {
+            if (!response) return
+            callback(response.root_id)
+          })
+      }
+
+
+      static stringToUint64(s) {
+        if (!s) return { low: 0, high: 0 }
+      
+        const MAX_INT_LENGTH = 9
+        const MAX_HEX_INT_LENGTH = 8
+      
+        if (s.length <= MAX_INT_LENGTH) return { low: +s, high: 0 }
+      
+        s = BigInt(s).toString(16)
+        if (s.length % 2) {
+          s = '0' + s
+        }
+      
+        let low = s.substring(MAX_HEX_INT_LENGTH)
+        let high = s.substring(0, s.length - low.length)
+      
+        low = parseInt(low, 16)
+        high = high ? parseInt(high, 16) : 0
+      
+        return { low: low, high: high }
+      }
+
+
+      static rgbToUint64(color) {
+        let colorObj = color.substring(1)
+        let r = parseInt(colorObj.substring(0, 2), 16)
+        let g = parseInt(colorObj.substring(2, 4), 16)
+        let b = parseInt(colorObj.substring(4, 6), 16)
+        // color will always be below FFFFFFFF, so there's no need to convert it to Uint64
+        return { low: r * 256 * 256 + g * 256 + b, high: 0 }
+      }
     }
     // END of Dock class
 
