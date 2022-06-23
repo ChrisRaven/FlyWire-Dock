@@ -406,9 +406,43 @@
 
         for (const [selector, value] of Object.entries(events)) {
           for (const [eventName, listener] of Object.entries(value)) {
-            document.querySelectorAll(selector).forEach(el => {
-              el.addEventListener(eventName, e => listener(e))
-            })
+            let selectorIsObject = typeof selector === 'object'
+            let listenerIsObject = typeof listener === 'object'
+            let singleNode = listener.singleNode
+            let target = selectorIsObject ? selector : document.querySelectorAll(selector)
+            let handler = listenerIsObject ? listener.handler : listener
+            let isTargetNodeList = NodeList.prototype.isPrototypeOf(target)
+            let params = [eventName, e => handler(e)]
+
+            if (!target && !listener) continue
+            if (isTargetNodeList && !target.length) continue
+
+            if (listenerIsObject && singleNode) {
+              if (target.length > 1) {
+                target[0].addEventListener(...params)
+              }
+              else {
+                if (isTargetNodeList) {
+                  target[0].addEventListener(...params)
+                }
+                else {
+                  target.addEventListener(...params)
+                }
+              }
+            }
+            else {
+              if (target.length > 1) {
+                target.forEach(el => el.addEventListener(...params))
+              }
+              else {
+                if (isTargetNodeList) {
+                  target[0].addEventListener(...params)
+                }
+                else {
+                  target.forEach(el => el.addEventListener(...params))
+                }
+              }
+            }
           }
         }
       }
@@ -577,8 +611,8 @@
 
       
       static jumpToCoords(coords) {
-        let voxelSize = viewer.layerSpecification.voxelSize.size
-        coords = [coords[0] * voxelSize[0], coords[1] * voxelSize[1], coords[2] * voxelSize[2]]
+        let voxelSize = Dock.getVoxelSize()
+        coords = Dock.multiplyVec3(coords, voxelSize)
         viewer.layerSpecification.setSpatialCoordinates(coords)
       }
 
@@ -601,6 +635,21 @@
           .split('+')[0]
 
         return id
+      }
+
+
+      static getVoxelSize() {
+        return viewer.layerSpecification.voxelSize.size
+      }
+
+
+      static multiplyVec3(arg1, arg2) {
+        return [arg1[0] * arg2[0], arg1[1] * arg2[1], arg1[2] * arg2[2]]
+      }
+
+
+      static divideVec3(arg1, arg2) {
+        return [arg1[0] / arg2[0], arg1[1] / arg2[1], arg1[2] / arg2[2]]
       }
     }
     // END of Dock class
