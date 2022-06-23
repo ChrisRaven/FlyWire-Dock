@@ -406,42 +406,20 @@
 
         for (const [selector, value] of Object.entries(events)) {
           for (const [eventName, listener] of Object.entries(value)) {
-            let selectorIsObject = typeof selector === 'object'
             let listenerIsObject = typeof listener === 'object'
             let singleNode = listener.singleNode
-            let target = selectorIsObject ? selector : document.querySelectorAll(selector)
+
+            let target = document.querySelectorAll(selector)
             let handler = listenerIsObject ? listener.handler : listener
-            let isTargetNodeList = NodeList.prototype.isPrototypeOf(target)
             let params = [eventName, e => handler(e)]
 
             if (!target && !listener) continue
-            if (isTargetNodeList && !target.length) continue
 
             if (listenerIsObject && singleNode) {
-              if (target.length > 1) {
-                target[0].addEventListener(...params)
-              }
-              else {
-                if (isTargetNodeList) {
-                  target[0].addEventListener(...params)
-                }
-                else {
-                  target.addEventListener(...params)
-                }
-              }
+              target[0].addEventListener(...params)
             }
             else {
-              if (target.length > 1) {
-                target.forEach(el => el.addEventListener(...params))
-              }
-              else {
-                if (isTargetNodeList) {
-                  target[0].addEventListener(...params)
-                }
-                else {
-                  target.forEach(el => el.addEventListener(...params))
-                }
-              }
+              target.forEach(el => el.addEventListener(...params))
             }
           }
         }
@@ -633,6 +611,7 @@
           .querySelector('div[data-type="segmentation_with_graph"] .neuroglancer-layer-item-value')
           .textContent
           .split('+')[0]
+          .split('→')[0]
 
         return id
       }
