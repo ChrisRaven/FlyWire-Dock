@@ -563,6 +563,45 @@
         // color will always be below FFFFFFFF, so there's no need to convert it to Uint64
         return { low: r * 256 * 256 + g * 256 + b, high: 0 }
       }
+
+
+      static getCurrentCoords() {
+        let coords = document
+          .querySelector('.neuroglancer-position-widget-input')
+          .value
+          .split(',')
+          .map(el => el.trim())
+
+        return coords
+      }
+
+      
+      static jumpToCoords(coords) {
+        let voxelSize = viewer.layerSpecification.voxelSize.size
+        coords = [coords[0] * voxelSize[0], coords[1] * voxelSize[1], coords[2] * voxelSize[2]]
+        viewer.layerSpecification.setSpatialCoordinates(coords)
+      }
+
+
+      static getCurrentMouseCoords() {
+        let coords = document
+          .querySelector('.neuroglancer-mouse-position-widget')
+          .textContent
+          .split(',')
+          .map(el => el.trim().split(' ')[1])
+
+        return coords
+      }
+
+
+      static getHighlightedSupervoxelId() {
+        let id = document
+          .querySelector('div[data-type="segmentation_with_graph"] .neuroglancer-layer-item-value')
+          .textContent
+          .split('+')[0]
+
+        return id
+      }
     }
     // END of Dock class
 
