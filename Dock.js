@@ -288,6 +288,7 @@
         style.textContent = /*css*/`
           :root {
             --kk-dock-addon-button-color: #5454d3;
+            --kk-dock-addon-font-family: arial, sans-serif;
           }
 
           #${DOCK_ID} {
@@ -301,6 +302,8 @@
             flex-wrap: wrap;
             top: 0;
             border-radius: 10px;
+            font-family: var(--kk-dock-addon-font-family);
+            font-size: 13px;
           }
 
           .${DOCK_ID}-aux-button {
@@ -328,6 +331,10 @@
 
           #${DOCK_ID}-move-button {
             top: 30px;
+          }
+
+          #${DOCK_ID} label {
+            font-family: var(--kk-dock-addon-font-family);
           }
 
           .${WRAPPER_CLASS} {
