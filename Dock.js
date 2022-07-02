@@ -335,6 +335,12 @@
 
           #${DOCK_ID} label {
             font-family: var(--kk-dock-addon-font-family);
+            display: inline-block;
+            margin: 3px;
+          }
+
+          #{DOCK_ID} input[type="checkbox"] {
+            vertical-align: bottom;
           }
 
           .${WRAPPER_CLASS} {
@@ -636,6 +642,78 @@
 
       static divideVec3(arg1, arg2) {
         return [arg1[0] / arg2[0], arg1[1] / arg2[1], arg1[2] / arg2[2]]
+      }
+
+      // Source: \neuroglancer\src\neuroglancer\annotation\annotation_layer_view.ts: AnnotationType
+      static annotations = {
+        type: {
+          POINT: 0,
+          LINE: 1,
+          AXIS_ALIGNED_BOUNDING_BOX: 2,
+          ELLIPSOID: 3,
+          COLLECTION: 4,
+          LINE_STRIP: 5,
+          SPOKE: 6
+        },
+        
+        getAnnotationLayer() {
+          let doesAnnotationLayerExist = [...viewer.layerManager.layerSet].some(layer => layer.name === 'annotation')
+
+          if (!doesAnnotationLayerExist) {
+            document.getElementsByClassName('neuroglancer-layer-add-button')[0].dispatchEvent(new MouseEvent("click", {ctrlKey: true}));
+          }
+
+          let annotationLayer
+          doesAnnotationLayerExist = [...viewer.layerManager.layerSet].some(layer => {
+            if (layer.name === 'annotation') {
+              annotationLayer = layer
+              return true
+            }
+          })
+          if (!doesAnnotationLayerExist) return false
+
+          return annotationLayer.layer.annotationLayerState.value.source
+        },
+
+        getRef(id) {
+          let annotationLayer = Dock.annotations.getAnnotationLayer()
+          let references = annotationLayer.references
+
+          for (const [refId, ref] of references) {
+            if (refId === id) {
+              return ref
+            }
+          }
+
+          return false
+        },
+
+        add(coords, type = 0, description = '') {
+          let annotationLayer = Dock.annotations.getAnnotationLayer()
+
+          let ref = annotationLayer.add({point: coords, type: type})
+
+          if (description) {
+            annotationLayer.update(ref, {...ref.value, description: description})
+          }
+
+          return ref.id
+        },
+
+        editDescription(id, newDesc) {
+          let ref = Dock.annotations.getRef(id)
+          let annotationLayer = Dock.annotations.getAnnotationLayer()
+
+          annotationLayer.update(ref, { ...ref.value, description: newDesc })
+        },
+
+        remove(id) {
+          let ref = Dock.annotations.getRef(id)
+          if (!ref) return
+
+          let annotationLayer = Dock.annotations.getAnnotationLayer()
+          annotationLayer.delete(ref)
+        }
       }
     }
     // END of Dock class
