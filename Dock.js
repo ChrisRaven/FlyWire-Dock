@@ -82,6 +82,7 @@
       #grabbedAddon = null
       #movingDifference = {}
       #grid = false
+      #resizeDialog = null
 
 
       constructor() {
@@ -101,6 +102,7 @@
         }
 
         this.#positionDock()
+        this.#resizeDialog = this.#createResizeDialog()
       }
 
 
@@ -252,33 +254,17 @@
       }
 
 
-      #resizeButtonHandler() {
-        let size = Dock.ls.get('size', true)
-        let width = size ? size.width : 400
-        let height = size ? size.height : 200
-
-        let dialog = new ResizeDialog({
-          width: width,
-          height: height,
-          okCallback: (newWidth, newHeight) => {
-            Dock.ls.set('size', { width: newWidth, height: newHeight }, true)
-            Dock.element.style.width = newWidth + 'px'
-            Dock.element.style.height = newHeight + 'px'
-            if (this.#editable) {
-              this.#resetGrid()
-            }
-          }
-        })
-
-        dialog.show()
-      }
-
       #moveButtonHandler(e) {
         if (!this.#moving) return
 
         let left = e.clientX - this.#movingDifference.x
         let top = e.clientY - this.#movingDifference.y
         this.#repositionDock(left, top)
+      }
+
+
+      #resizeButtonHandler() {
+        this.#resizeDialog.show()
       }
 
 
@@ -715,193 +701,266 @@
           annotationLayer.delete(ref)
         }
       }
-    }
-    // END of Dock class
 
-    class ResizeDialog {
-      #id = DOCK_ID + '-resize-dialog'
-      #widthId = this.#id + '-width'
-      #heightId = this.#id + '-height'
-      #width
-      #height
-      #okCallback
-      #cancelCallback
-      #minWidth = 50
-      #maxWidth = 1000
-      #minHeight = 30
-      #maxHeight = 1000
-      #stylesAdded = false
-
-      constructor({ width, height, okCallback, cancelCallback }) {
-        this.#width = width
-        this.#height = height  
-        this.#okCallback = okCallback || (() => {})
-        this.#cancelCallback = cancelCallback || (() => {})
+      static dialog(options) {
+        return new Dialog(options)
       }
+ 
 
-      show() {
-        if (!this.#stylesAdded) {
-          this.#addStyles()
-          this.#stylesAdded = true
-        }
+      #createResizeDialog() {
+        let size = Dock.ls.get('size', true)
+        let width = size ? size.width : 400
+        let height = size ? size.height : 200
+        let id = 'kk-dock-resize-dialog'
+        let minWidth = 50
+        let maxWidth = 1000
+        let minHeight = 30
+        let maxHeight = 1000
 
-        let okId = this.#id + '-ok'
-        let cancelId = this.#id + '-cancel'
-        
-        let dialog = document.createElement('div')
-        dialog.id = this.#id
-        dialog.innerHTML = /*html*/`
-          <span>width</span><input type="number" id="${this.#widthId}" value="${this.#width}"></input>
-          <span>height</span><input type="number" id="${this.#heightId}" value="${this.#height}"></input>
-          <div class="button-wrapper">
-            <button id="${okId}">Save</button>
-            <button id="${cancelId}">Cancel</button>
+        let resizeDialogHtml = /*html*/`
+          <div class="grid">
+            <span>width</span><input type="number" class="resize-width" value="${width}"></input>
+            <span>height</span><input type="number" class="resize-height" value="${height}"></input>
           </div>
         `
-        document.body.appendChild(dialog)
 
-        document.getElementById(okId).addEventListener('click', () => this.#ok() )
-        document.getElementById(cancelId).addEventListener('click', () => this.#cancel() )
-      }
-
-      #addStyles() {
-        document.getElementById('vueMain').style.filter = 'blur(10px)'
-
-        let style = document.createElement('style')
-        style.type = 'text/css'
-        style.textContent = /*css*/`
-          #${this.#id} {
-            width: 190px;
-            height: 150px;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(30, 30, 30, 0.80);
-            color: white;
-            z-index: 31;
-            padding: 20px;
-            border-radius: 4px;
+        let resizeDialogCss = /*css*/`
+          #${id} .grid {
             display: grid;
             grid-template-columns: 1fr 2fr;
-            grid-template-rows: repeat(3, 1fr);
             grid-column-gap: 0px;
             grid-row-gap: 0px;
-            font-family: 'Roboto';
           }
 
-          #${this.#id} > :first-child {
+          #${id} .content > :first-child {
             grid-area: 1 / 1 / 2 / 2;
           }
 
-          #${this.#id} > :nth-child(2) {
+          #${id} .content > :nth-child(2) {
             grid-area: 1 / 2 / 2 / 3;
           }
 
-          #${this.#id} > :nth-child(3) {
+          #${id} .content > :nth-child(3) {
             grid-area: 2 / 1 / 3 / 2;
           }
 
-          #${this.#id} > :nth-child(4) {
+          #${id} .content > :nth-child(4) {
             grid-area: 2 / 2 / 3 / 3;
           }
 
-          #${this.#id} .button-wrapper {
+          #${id} .button-wrapper {
             grid-area: 3 / 1 / 4 / 3;
             text-align: center;
           }
 
-          #${this.#id} input {
-            width: 100px;
-            height: 20px;
-            background-color: #222;
-            border: 1px solid #5454d3;
-            color: white;
-          }
-
-          #${this.#id} button {
-            width: 70px;
-            height: 30px;
-            background-color: #5454d3;
-            color: white;
-            border-radius: 4px;
-            box-shadow: 0 0 0.2em #5454d3;
-            border: none;
-            margin-right: 8px;
-          }
-
-          #${this.#id} button:hover {
-            box-shadow: 0 0 0.5em #5454d3;
-          }
-
-          #${this.#id} button:hover:active {
-            box-shadow: 0 0 0.7em #5454d3;
-          }
-
-          #${this.#id} span {
+          #${id} span {
             padding: 5px;
             color: #ccc;
           }
         `
 
-        document.head.appendChild(style)
-      }
+        let resizeDialogOkCallback = () => {
+          let width = parseInt(document.querySelector(`#${resizeDialog.id} .resize-width`).value, 10)
+          let height = parseInt(document.querySelector(`#${resizeDialog.id} .resize-height`).value, 10)
 
-      #hide() {
-        document.getElementById('vueMain').style.filter = ''
-        document.getElementById(this.#id).remove()
-      }
+          width = Math.min(Math.max(minWidth, width), maxWidth)
+          height = Math.min(Math.max(minHeight, height), maxHeight)
 
-      #ok() {
-        let width = parseInt(document.getElementById(this.#widthId).value, 10)
-        let height = parseInt(document.getElementById(this.#heightId).value, 10)
-        width = Math.min(Math.max(this.#minWidth, width), this.#maxWidth)
-        height = Math.min(Math.max(this.#minHeight, height), this.#maxHeight)
-        this.#okCallback(width, height)
-        this.#hide()
-      }
+          Dock.ls.set('size', { width: width, height: height }, true)
+          Dock.element.style.width = width + 'px'
+          Dock.element.style.height = height + 'px'
+          if (this.#editable) {
+            this.#resetGrid()
+          }
+        }
 
-      #cancel() {
-        this.#cancelCallback()
-        this.#hide()
+        let resizeDialog = Dock.dialog({
+          html: resizeDialogHtml,
+          css: resizeDialogCss,
+          id: id,
+          okCallback: resizeDialogOkCallback,
+          cancelCallback: () => {}
+        })
+
+        return resizeDialog
       }
     }
-    // END of ResizeDialog class
+    // END of Dock class
+
+  function prepare() {
+    // Dock.ls.get() isn't ready at this moment
+    let size = localStorage.getItem(`${userId}-${DOCK_ID}-size`)
+    let width = 400
+    let height = 200
+    if (size) {
+      // Source: https://stackoverflow.com/a/51136281 (why braces)
+      ({ width, height } = JSON.parse(size))
+    }
+
+    let dockElement = document.createElement('div')
+    dockElement.id = DOCK_ID
+    dockElement.style.width = width + 'px'
+    dockElement.style.height = height + 'px'
+    document.body.appendChild(dockElement)
+    
+    let waitForMenuCallback = () => {
+      let menu = document.getElementsByClassName('nge-gs-links')
+      if (!menu.length) return
+
+      clearInterval(waitForMenu)
+
+      let link = document.createElement('div')
+      link.classList.add('nge-gs-link')
+      link.innerHTML = '<button>Addons</button>'
+      link.addEventListener('click', toggleAddonsWrapper)
+      menu[0].appendChild(link)
+    }
+
+    let waitForMenu = setInterval(waitForMenuCallback, 100)
+
+    return dockElement
+  }
+
+}
+// END of main() function
 
 
-    function prepare() {
-      // Dock.ls.get() isn't ready at this moment
-      let size = localStorage.getItem(`${userId}-${DOCK_ID}-size`)
-      let width = 400
-      let height = 200
-      if (size) {
-        // Source: https://stackoverflow.com/a/51136281 (why braces)
-        ({ width, height } = JSON.parse(size))
-      }
 
-      let dockElement = document.createElement('div')
-      dockElement.id = DOCK_ID
-      dockElement.style.width = width + 'px'
-      dockElement.style.height = height + 'px'
-      document.body.appendChild(dockElement)
-      
-      let waitForMenuCallback = () => {
-        let menu = document.getElementsByClassName('nge-gs-links')
-        if (!menu.length) return
+class Dialog {
+  #created = false
+  #html
+  #css
+  #okCallback = null
+  #cancelCallback = null
+  #okLabel = 'OK'
+  #cancelLabel = 'Cancel'
+  #wrapper
 
-        clearInterval(waitForMenu)
+  id
 
-        let link = document.createElement('div')
-        link.classList.add('nge-gs-link')
-        link.innerHTML = '<button>Addons</button>'
-        link.addEventListener('click', toggleAddonsWrapper)
-        menu[0].appendChild(link)
-      }
+  constructor({ html, id, css, okCallback, cancelCallback, okLabel, cancelLabel }) {
+    if (!content) return console.error('Dock.dialog: missing content')
+    if (!id) return console.error('Dock.dialog: missing id')
 
-      let waitForMenu = setInterval(waitForMenuCallback, 100)
+    this.#html = html
+    this.id = id
+    this.#css = css
+    this.#okCallback = okCallback
+    okLabel && (this.#okLabel = okLabel)
+    cancelLabel && (this.#cancelLabel = cancelLabel)
+    this.#cancelCallback = cancelCallback
+    this.#create()
+  }
 
-      return dockElement
+
+  #create() {
+    this.#addStyles()
+
+    this.#wrapper = document.createElement('div')
+    this.#wrapper.id = this.id
+    this.#wrapper.innerHTML = `<div class="content">${this.#html}</div><div class="button-wrapper"></div>`
+    document.body.appendChild(this.#wrapper)
+
+    let buttonTarget = this.#wrapper.getElementsByClassName('button-wrapper')[0]
+
+    if (this.#okCallback) {
+      let okButton = document.createElement('button')
+      okButton.textContent = this.#okLabel
+      buttonTarget.appendChild(okButton)
+      okButton.addEventListener('click', () => this.#ok())
+    }
+
+    if (this.#cancelCallback) {
+      let cancelButton = document.createElement('button')
+      cancelButton.textContent = this.#cancelLabel
+      buttonTarget.appendChild(cancelButton)
+      cancelButton.addEventListener('click', () => this.#cancel())
     }
   }
+
+
+  show() {
+    this.#wrapper.style.display = 'block'
+    document.getElementById('vueMain').style.filter = 'blur(10px)'
+  }
+  
+
+  hide() {
+    document.getElementById('vueMain').style.filter = ''
+    this.#wrapper.style.display = 'none'
+  }
+
+  
+  #ok() {
+    this.#okCallback()
+    this.hide()
+  }
+
+
+  #cancel() {
+    this.#cancelCallback()
+    this.hide()
+  }
+
+
+  #addStyles() {
+    let style = document.createElement('style')
+    style.type = 'text/css'
+    style.textContent = (this.#css ? this.#css : '') + /*css*/`
+      #${this.id} {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: rgba(30, 30, 30, 0.80);
+        color: white;
+        z-index: 31;
+        padding: 20px;
+        border-radius: 4px;
+        display: none;
+        font-family: 'Roboto';
+      }
+
+      #${this.id} input[type="text"], 
+      #${this.id} input[type="number"] {
+        width: 100px;
+        height: 20px;
+        background-color: #222;
+        border: 1px solid #5454d3;
+        color: white;
+      }
+
+      #${this.id} .button-wrapper {
+        min-width: 200px;
+        margin-top: 10px;
+        text-align: center;
+      }
+
+      #${this.id} button {
+        width: 70px;
+        height: 30px;
+        background-color: #5454d3;
+        color: white;
+        border-radius: 4px;
+        box-shadow: 0 0 0.2em #5454d3;
+        border: none;
+        margin-right: 8px;
+      }
+
+      #${this.id} button:hover {
+        box-shadow: 0 0 0.5em #5454d3;
+      }
+
+      #${this.id} button:hover:active {
+        box-shadow: 0 0 0.7em #5454d3;
+      }
+    `
+
+    document.head.appendChild(style)
+  }
+}
+// END of Dialog class
+
+
 
 })()
