@@ -687,6 +687,44 @@
           return false
         },
 
+        getMulticutRef(field, value) {
+          let graphLayer = Dock.layers.getByType('segmentation_with_graph', false)[0]
+          let graphLayerState = graphLayer.layer.graphOperationLayerState.value
+          let refId
+          let sourceGroup = '';
+
+          [...graphLayerState.annotationLayerStateA.value.source].forEach(el => {
+            if (el[field] === value) {
+              refId = el.id
+              sourceGroup = 'A'
+              return false
+            }
+          })
+          
+          if (!refId) {
+            [...graphLayerState.annotationLayerStateB.value.source].forEach(el => {
+              if (el[field] === value) {
+                refId = el.id
+                sourceGroup = 'B'
+                return false
+              }
+            })
+          }
+        
+          if (!sourceGroup) return null
+        
+          let annotationLayer = sourceGroup === 'A' ? graphLayerState.annotationLayerStateA : graphLayerState.annotationLayerStateB
+          let source = annotationLayer.value.source
+          let ref = source.getReference(refId)
+        
+          if (!ref) return null
+        
+          return {
+            source: source,
+            reference: ref
+          }
+        },
+
         add(coords, type = 0, description = '') {
           let annotationLayer = Dock.annotations.getAnnotationLayer()
 
