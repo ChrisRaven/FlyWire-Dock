@@ -797,6 +797,58 @@
 
         return resizeDialog
       }
+
+
+      static layers = {
+        getByName: (name, withIndexes = true) => {
+          let layers = []
+          viewer.layerManager.managedLayers.forEach((layer, index) => {
+            if (layer.name === name) {
+              if (withIndexes) {
+                layers.push({index: index, layer: layer})
+              }
+              else {
+                layers.push(layer)
+              }
+            }
+          })
+
+          return layers
+        },
+
+        getByType: (type, withIndexes = true) => {
+          let layers = []
+          viewer.layerManager.managedLayers.forEach((layer, index) => {
+            if (layer.initialSpecification.type === type) {
+              if (withIndexes) {
+                layers.push({index: index, layer: layer})
+              }
+              else {
+                layers.push(layer)
+              }
+            }
+          })
+
+          return layers
+        },
+
+        getAll: () => {
+          return viewer.layerManager.managerLayers
+        },
+
+        remove: index => {
+          let manager = viewer.layerManager
+          let layer = manager.managedLayers[index]
+        
+          layer.layerChanged.remove(manager.layersChanged.dispatch)
+          layer.readyStateChanged.remove(manager.readyStateChanged.dispatch)
+          layer.specificationChanged.remove(manager.specificationChanged.dispatch)
+          layer.dispose()
+          manager.managedLayers.splice(index, 1)
+          manager.layerSet.delete(layer)
+          manager.layersChanged.dispatch()
+        }
+      }
     }
     // END of Dock class
 
