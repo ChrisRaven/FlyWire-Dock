@@ -274,6 +274,7 @@
         style.textContent = /*css*/`
           :root {
             --kk-dock-addon-button-color: #5454d3;
+            --kk-dock-addon-button-color-active: yellow;
             --kk-dock-addon-font-family: arial, sans-serif;
           }
 
@@ -362,6 +363,18 @@
             margin: 2px;
             padding: 4px 8px;
             cursor: pointer;
+          }
+
+          .${WRAPPER_CLASS} button:hover {
+            box-shadow: 0 0 0.3em var(--kk-dock-addon-button-color);
+          }
+
+          .${WRAPPER_CLASS} button.active {
+            border: 1px solid var(--kk-dock-addon-button-color-active);
+          }
+
+          .${WRAPPER_CLASS} button.active:hover {
+            box-shadow: 0 0 0.3em var(--kk-dock-addon-button-color-active);
           }
 
           #${DOCK_ID}-grid {
