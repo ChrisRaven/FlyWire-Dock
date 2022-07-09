@@ -833,7 +833,7 @@
         },
 
         getAll: () => {
-          return viewer.layerManager.managerLayers
+          return viewer.layerManager.managedLayers
         },
 
         remove: index => {
