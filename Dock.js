@@ -557,25 +557,31 @@
 
 
       static stringToUint64(s) {
-        if (!s) return { low: 0, high: 0 }
-      
+        function Result(low, high) {
+          this.low = low
+          this.high = high
+        }
+        Result.prototype.toString = () => s
+
+        if (!s) return new Result(0, 0)
+
         const MAX_INT_LENGTH = 9
         const MAX_HEX_INT_LENGTH = 8
       
         if (s.length <= MAX_INT_LENGTH) return { low: +s, high: 0 }
       
-        s = BigInt(s).toString(16)
-        if (s.length % 2) {
-          s = '0' + s
+        let bs = BigInt(s).toString(16)
+        if (bs.length % 2) {
+          bs = '0' + bs
         }
       
-        let low = s.substring(MAX_HEX_INT_LENGTH)
-        let high = s.substring(0, s.length - low.length)
+        let low = bs.substring(MAX_HEX_INT_LENGTH)
+        let high = bs.substring(0, bs.length - low.length)
       
         low = parseInt(low, 16)
         high = high ? parseInt(high, 16) : 0
-      
-        return { low: low, high: high }
+
+        return new Result(low, high)
       }
 
 
@@ -642,6 +648,20 @@
       static divideVec3(arg1, arg2) {
         return [arg1[0] / arg2[0], arg1[1] / arg2[1], arg1[2] / arg2[2]]
       }
+
+      
+      // Source: \neuroglances\src\neuroglancer\util\random.ts
+      static getRandomHexString(numBits = 128) {
+        const numValues = Math.ceil(numBits / 32)
+        const data = new Uint32Array(numValues)
+        crypto.getRandomValues(data)
+        let s = ''
+        for (let i = 0; i < numValues; ++i) {
+          s += ('00000000' + data[i].toString(16)).slice(-8)
+        }
+        return s
+      }
+
 
       // Source: \neuroglancer\src\neuroglancer\annotation\annotation_layer_view.ts: AnnotationType
       static annotations = {
