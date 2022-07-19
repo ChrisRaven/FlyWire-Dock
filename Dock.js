@@ -377,6 +377,12 @@
             box-shadow: 0 0 0.3em var(--kk-dock-addon-button-color-active);
           }
 
+          .${WRAPPER_CLASS} button:disabled {
+            color: gray;
+            border-color: gray;
+            box-shadow: 0 0 0.3em grey;
+          }
+
           #${DOCK_ID}-grid {
             display: none;
             z-index: -1;
