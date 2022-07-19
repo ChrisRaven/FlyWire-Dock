@@ -380,7 +380,7 @@
           .${WRAPPER_CLASS} button:disabled {
             color: gray;
             border-color: gray;
-            box-shadow: 0 0 0.3em grey;
+            box-shadow: none;
           }
 
           #${DOCK_ID}-grid {
