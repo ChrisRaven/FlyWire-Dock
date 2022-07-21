@@ -109,6 +109,7 @@
 
       #toggleAddonVisibility(e) {
         if (!e.shiftKey || (e.key !== 'a' && e.key !== 'A')) return
+        if (document.getElementById('chatMessage') === document.activeElement) return
 
         toggleAddonsWrapper()
       }
