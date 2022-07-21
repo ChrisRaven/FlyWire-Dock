@@ -100,9 +100,17 @@
         if (Dock.ls.get('is-closed') !== 'false') {
           toggleAddonsWrapper()
         }
+        document.addEventListener('keydown', (e) => this.#toggleAddonVisibility(e))
 
         this.#positionDock()
         this.#resizeDialog = this.#createResizeDialog()
+      }
+
+
+      #toggleAddonVisibility(e) {
+        if (!e.shiftKey || (e.key !== 'a' && e.key !== 'A')) return
+
+        toggleAddonsWrapper()
       }
 
 
