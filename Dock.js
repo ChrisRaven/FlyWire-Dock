@@ -948,7 +948,7 @@
 
       let link = document.createElement('div')
       link.classList.add('nge-gs-link')
-      link.innerHTML = '<button>Addons</button>'
+      link.innerHTML = '<button title="Press Shift+A to toggle">Addons</button>'
       link.addEventListener('click', toggleAddonsWrapper)
       menu[0].appendChild(link)
     }
