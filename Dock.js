@@ -976,7 +976,7 @@ class Dialog {
 
   id
 
-  constructor({ html, id, css, okCallback, cancelCallback, okLabel, cancelLabel }) {
+  constructor({ html, id, css, okCallback, cancelCallback, okLabel = 'OK', cancelLabel = 'Cancel' }) {
     if (!content) return console.error('Dock.dialog: missing content')
     if (!id) return console.error('Dock.dialog: missing id')
 
@@ -984,9 +984,9 @@ class Dialog {
     this.id = id
     this.#css = css
     this.#okCallback = okCallback
-    okLabel && (this.#okLabel = okLabel)
-    cancelLabel && (this.#cancelLabel = cancelLabel)
+    this.#okLabel = okLabel
     this.#cancelCallback = cancelCallback
+    this.#cancelLabel = cancelLabel
     this.#create()
   }
 
