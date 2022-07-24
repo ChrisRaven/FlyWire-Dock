@@ -21,7 +21,6 @@
   
 
   function main() {
-    const dockElement = prepare()
 
     // proxy for fetch
     let f = globalThis.fetch
@@ -55,25 +54,8 @@
 
     globalThis.Dock = class {
       static #instance = null
-      static element = dockElement
+      static element
       static userId = userId
-
-      static ls = {
-        keyPrefix: `${userId}-${DOCK_ID}-`,
-        get(key, JSONparse = false) {
-          let value = localStorage.getItem(Dock.ls.keyPrefix + key)
-          return JSONparse && value ? JSON.parse(value) : value
-        },
-
-        set(key, value, JSONstringify = false) {
-          value = JSONstringify && value ? JSON.stringify(value) : value
-          localStorage.setItem(Dock.ls.keyPrefix + key, value)
-        },
-
-        remove(key) {
-          localStorage.removeItem(Dock.ls.keyPrefix + key)
-        }
-      }
 
       
       #gridSize = 15
@@ -90,6 +72,8 @@
 
         Dock.instance = this
 
+        this.#prepare()
+        this.#addMenuLink()
         this.#addStyles()
         this.#createGrid()
         this.#createAuxButtons()
@@ -140,6 +124,45 @@
         document.addEventListener('mousemove', e => this.#moveButtonHandler(e))
         document.addEventListener('mouseup', e => this.#moveButtonMouseUpHandler(e))
         window.addEventListener('resize', e => this.#resizeWindowHandler(e))
+      }
+
+
+      #prepare() {
+        // Dock.ls.get() isn't ready at this moment
+        let size = localStorage.getItem(`${userId}-${DOCK_ID}-size`)
+        let width = 400
+        let height = 200
+        if (size) {
+          // Source: https://stackoverflow.com/a/51136281 (why braces)
+          ({ width, height } = JSON.parse(size))
+        }
+    
+        let dockElement = document.createElement('div')
+        dockElement.id = DOCK_ID
+        dockElement.style.width = width + 'px'
+        dockElement.style.height = height + 'px'
+        dockElement.style.display = 'none'
+        document.body.appendChild(dockElement)
+
+        Dock.element = dockElement
+      }
+
+
+      #addMenuLink() {
+        let waitForMenuCallback = () => {
+          let menu = document.getElementsByClassName('nge-gs-links')
+          if (!menu.length) return
+    
+          clearInterval(waitForMenu)
+    
+          let link = document.createElement('div')
+          link.classList.add('nge-gs-link')
+          link.innerHTML = '<button title="Press Shift+A to toggle">Addons</button>'
+          link.addEventListener('click', toggleAddonsWrapper)
+          menu[0].appendChild(link)
+        }
+    
+        let waitForMenu = setInterval(waitForMenuCallback, 100)
       }
 
 
@@ -545,6 +568,24 @@
       }
 
       // helper methods
+      static ls = {
+        keyPrefix: `${userId}-${DOCK_ID}-`,
+        get(key, JSONparse = false) {
+          let value = localStorage.getItem(Dock.ls.keyPrefix + key)
+          return JSONparse && value ? JSON.parse(value) : value
+        },
+
+        set(key, value, JSONstringify = false) {
+          value = JSONstringify && value ? JSON.stringify(value) : value
+          localStorage.setItem(Dock.ls.keyPrefix + key, value)
+        },
+
+        remove(key) {
+          localStorage.removeItem(Dock.ls.keyPrefix + key)
+        }
+      }
+
+
       static getSegmentId(x, y, z, callback) {
         GM_xmlhttpRequest({
           method: 'POST',
@@ -665,7 +706,7 @@
       }
 
       
-      // Source: \neuroglances\src\neuroglancer\util\random.ts
+      // Source: \neuroglancer\src\neuroglancer\util\random.ts
       static getRandomHexString(numBits = 128) {
         const numValues = Math.ceil(numBits / 32)
         const data = new Uint32Array(numValues)
@@ -811,6 +852,9 @@
         `
 
         let resizeDialogCss = /*css*/`
+          #${id} {
+            position: relative;
+          }
           #${id} .grid {
             display: grid;
             grid-template-columns: 1fr 2fr;
@@ -864,6 +908,7 @@
           html: resizeDialogHtml,
           css: resizeDialogCss,
           id: id,
+          width: 170,
           okCallback: resizeDialogOkCallback,
           cancelCallback: () => {}
         })
@@ -922,43 +967,20 @@
           manager.layersChanged.dispatch()
         }
       }
+
+
+      static getShareableUrl(callback) {
+        fetch(viewer.jsonStateServer.value + '?middle_auth_token=' + localStorage.getItem('auth_token'), {
+          method: 'POST',
+          body: JSON.stringify(viewer.state.toJSON())
+        })
+          .then(res => res.json())
+          .then(response => {
+            callback('https://ngl.flywire.ai/?json_url=' + response)
+          })
+      }
     }
     // END of Dock class
-
-  function prepare() {
-    // Dock.ls.get() isn't ready at this moment
-    let size = localStorage.getItem(`${userId}-${DOCK_ID}-size`)
-    let width = 400
-    let height = 200
-    if (size) {
-      // Source: https://stackoverflow.com/a/51136281 (why braces)
-      ({ width, height } = JSON.parse(size))
-    }
-
-    let dockElement = document.createElement('div')
-    dockElement.id = DOCK_ID
-    dockElement.style.width = width + 'px'
-    dockElement.style.height = height + 'px'
-    document.body.appendChild(dockElement)
-    
-    let waitForMenuCallback = () => {
-      let menu = document.getElementsByClassName('nge-gs-links')
-      if (!menu.length) return
-
-      clearInterval(waitForMenu)
-
-      let link = document.createElement('div')
-      link.classList.add('nge-gs-link')
-      link.innerHTML = '<button title="Press Shift+A to toggle">Addons</button>'
-      link.addEventListener('click', toggleAddonsWrapper)
-      menu[0].appendChild(link)
-    }
-
-    let waitForMenu = setInterval(waitForMenuCallback, 100)
-
-    return dockElement
-  }
-
 }
 // END of main() function
 
@@ -973,10 +995,13 @@ class Dialog {
   #okLabel = 'OK'
   #cancelLabel = 'Cancel'
   #wrapper
+  #destroyAfterClosing = false
+  #width = 200
+  #overlay
 
   id
 
-  constructor({ html, id, css, okCallback, cancelCallback, okLabel = 'OK', cancelLabel = 'Cancel' }) {
+  constructor({ html, id, css, okCallback, cancelCallback, okLabel = 'OK', cancelLabel = 'Cancel', afterCallback, destroyAfterClosing = false, width = 200 }) {
     if (!content) return console.error('Dock.dialog: missing content')
     if (!id) return console.error('Dock.dialog: missing id')
 
@@ -987,17 +1012,24 @@ class Dialog {
     this.#okLabel = okLabel
     this.#cancelCallback = cancelCallback
     this.#cancelLabel = cancelLabel
+    this.#destroyAfterClosing = destroyAfterClosing
+    this.#width = width
     this.#create()
+    afterCallback && afterCallback()
   }
 
 
   #create() {
     this.#addStyles()
 
+    this.#overlay = document.createElement('div')
+    this.#overlay.id = (this.id + '-kk-dialog-overlay')
     this.#wrapper = document.createElement('div')
+    this.#overlay.appendChild(this.#wrapper)
     this.#wrapper.id = this.id
+    this.#wrapper.style.width = this.#width + (typeof this.#width === 'number' ? 'px' : '')
     this.#wrapper.innerHTML = `<div class="content">${this.#html}</div><div class="button-wrapper"></div>`
-    document.body.appendChild(this.#wrapper)
+    document.body.appendChild(this.#overlay)
 
     let buttonTarget = this.#wrapper.getElementsByClassName('button-wrapper')[0]
 
@@ -1014,18 +1046,19 @@ class Dialog {
       buttonTarget.appendChild(cancelButton)
       cancelButton.addEventListener('click', () => this.#cancel())
     }
+
+    this.#overlay.addEventListener('click', () => this.#cancel())
   }
 
 
   show() {
-    this.#wrapper.style.display = 'block'
-    document.getElementById('vueMain').style.filter = 'blur(10px)'
+    this.#wrapper.parentNode.style.display = 'block'
   }
   
 
   hide() {
-    document.getElementById('vueMain').style.filter = ''
-    this.#wrapper.style.display = 'none'
+    this.#wrapper.parentNode.style.display = 'none'
+    this.#destroyAfterClosing && this.#destroy()
   }
 
   
@@ -1039,6 +1072,11 @@ class Dialog {
     this.#cancelCallback()
     this.hide()
   }
+  
+
+  #destroy() {
+    document.getElementById(this.id).parentNode.remove()
+  }
 
 
   #addStyles() {
@@ -1046,7 +1084,7 @@ class Dialog {
     style.type = 'text/css'
     style.textContent = (this.#css ? this.#css : '') + /*css*/`
       #${this.id} {
-        position: absolute;
+        position: relative;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
@@ -1055,8 +1093,12 @@ class Dialog {
         z-index: 31;
         padding: 20px;
         border-radius: 4px;
-        display: none;
         font-family: 'Roboto';
+        display: block;
+      }
+
+      #${this.id} .content {
+        height: 95%;
       }
 
       #${this.id} input[type="text"], 
@@ -1083,6 +1125,7 @@ class Dialog {
         box-shadow: 0 0 0.2em #5454d3;
         border: none;
         margin-right: 8px;
+        cursor: pointer;
       }
 
       #${this.id} button:hover {
@@ -1091,6 +1134,18 @@ class Dialog {
 
       #${this.id} button:hover:active {
         box-shadow: 0 0 0.7em #5454d3;
+      }
+
+      #${this.id}-kk-dialog-overlay {
+        position: fixed;
+        top: -1000px;
+        bottom: -1000px;
+        left: -1000px;
+        right: -1000px;
+        z-index: 80;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
+        display: none;
       }
     `
 
