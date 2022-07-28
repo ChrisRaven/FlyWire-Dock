@@ -35,10 +35,22 @@
             detail: {
               url: args[0],
               params: args[1],
-              response: response
+              response: response,
+              success: true
             }
           }))
-      })
+        })
+        .catch(err => {
+          document.dispatchEvent(new CustomEvent('fetch', {
+            detail: {
+              url: args[0],
+              params: args[1],
+              response: { code: 0 },
+              success: false,
+              errMessage: err.message
+            }
+          }))
+        })
 
       return res
     }
@@ -599,16 +611,35 @@
         })
       }
 
-
+// viewer.selectedLayer.layer.layer_.chunkedGraphLayer.getRoot({segmentId: '720575940626686089'}).then(result => console.log(result))
       static getRootId(supervoxelId, callback) {
         let authToken = localStorage.getItem('auth_token')
+        let controller = new AbortController()
       
-        fetch(`https://prodv1.flywire-daf.com/segmentation/api/v1/table/fly_v31/node/${supervoxelId}/root?int64_as_str=1&middle_auth_token=${authToken}`)
+        fetch(`https://prodv1.flywire-daf.com/segmentation/api/v1/table/fly_v31/node/${supervoxelId}/root?int64_as_str=1&middle_auth_token=${authToken}`, { signal: controller.signal })
           .then(response => response.json())
           .then(response => {
             if (!response) return
-            callback(response.root_id)
+            if (callback) {
+              callback(response.root_id)
+            }
           })
+          .catch(() => callback(null))
+
+        return controller
+      }
+
+
+      static getRootIdByCurrentCoords(callback) {
+        Dock.getSegmentId(...Dock.getCurrentCoords(), result => segIdCallback(result))
+
+        function segIdCallback(segId) {
+          Dock.getRootId(segId, result => rootIdCallback(result))
+        }
+
+        function rootIdCallback(rootId) {
+          callback(rootId)
+        }
       }
 
 
@@ -668,7 +699,7 @@
         viewer.layerSpecification.setSpatialCoordinates(coords)
       }
 
-
+      // TODO: check: viewer.mouseState.position
       static getCurrentMouseCoords() {
         let coords = document
           .querySelector('.neuroglancer-mouse-position-widget')
@@ -1001,7 +1032,7 @@ class Dialog {
 
   id
 
-  constructor({ html, id, css, okCallback, cancelCallback, okLabel = 'OK', cancelLabel = 'Cancel', afterCallback, destroyAfterClosing = false, width = 200 }) {
+  constructor({ html, id, css, okCallback, cancelCallback, okLabel = 'OK', cancelLabel = 'Cancel', afterCreateCallback: afterCreateCallback, destroyAfterClosing = false, width = 200 }) {
     if (!content) return console.error('Dock.dialog: missing content')
     if (!id) return console.error('Dock.dialog: missing id')
 
@@ -1015,7 +1046,7 @@ class Dialog {
     this.#destroyAfterClosing = destroyAfterClosing
     this.#width = width
     this.#create()
-    afterCallback && afterCallback()
+    afterCreateCallback && afterCreateCallback()
   }
 
 
@@ -1047,7 +1078,10 @@ class Dialog {
       cancelButton.addEventListener('click', () => this.#cancel())
     }
 
-    this.#overlay.addEventListener('click', () => this.#cancel())
+    this.#overlay.addEventListener('click', e => {
+      if (e.target !== e.currentTarget) return
+      this.#cancel()
+    })
   }
 
 
