@@ -1145,7 +1145,7 @@ class Dialog {
       }
 
       #${this.id} .button-wrapper {
-        min-width: 200px;
+        min-width: ${this.#width}px;
         margin-top: 10px;
         text-align: center;
       }
