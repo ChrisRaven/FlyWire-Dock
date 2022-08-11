@@ -730,7 +730,9 @@
         //   .map(el => el.trim().split(' ')[1])
 
         // return coords
-        return [...viewer.mouseState.position]
+        let mousePos = [...viewer.mouseState.position]
+        let voxelSize = Dock.getVoxelSize
+        return [mousePos[0] / voxelSize[0], mousePos[1] / voxelSize[1], mousePos[2] / voxelSize[2]]
       }
 
 
