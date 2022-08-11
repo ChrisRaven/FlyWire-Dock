@@ -521,8 +521,10 @@
 
           let position = Dock.ls.get('addon-position-' + id, true)
           if (position) {
-            document.getElementById(id).style.left = position.x + 'px'
-            document.getElementById(id).style.top = position.y + 'px'
+            let el = document.getElementById(id)
+            let computedStyle = window.getComputedStyle(el)
+            el.style.left = position.x - parseInt(computedStyle.marginLeft, 10) + 'px'
+            el.style.top = position.y - parseInt(computedStyle.marginTop, 10) + 'px'
           }
         }
       }
