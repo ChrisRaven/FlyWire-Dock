@@ -598,7 +598,15 @@
       }
 
 
+      // TODO: change name to getSegmentIdByCoords
       static getSegmentId(x, y, z, callback) {
+        let isArray = Array.isArray(x)
+
+        if (isArray) {
+          x = x.join(',')
+          y = y.join(',')
+          z = z.join(',')
+        }
         GM_xmlhttpRequest({
           method: 'POST',
           url: 'https://services.itanna.io/app/transform-service/query/dataset/flywire_190410/s/2/values_array_string_response',
@@ -607,39 +615,47 @@
             'Accept': 'application/json',
             'Content-Type': 'application/json'
           },
-          onload: response => response && callback(JSON.parse(response.response).values[0][0])
+          onload: response => {
+            if (!response) return
+            response = JSON.parse(response.response).values[0]
+            callback(isArray ? response : response[0])
+          }
+        })
+      }
+
+      static getRootIdByCoords(x, y, z, callback) {
+        Dock.getSegmentId(x, y, z, segmentId => {
+          Dock.getRootId(segmentId, rootId => callback(rootId))
         })
       }
 
 // viewer.selectedLayer.layer.layer_.chunkedGraphLayer.getRoot({segmentId: '720575940626686089'}).then(result => console.log(result))
-      static getRootId(supervoxelId, callback) {
+      static getRootId(supervoxelId, callback, returnPromise = false) {
         let authToken = localStorage.getItem('auth_token')
         let controller = new AbortController()
       
-        fetch(`https://prodv1.flywire-daf.com/segmentation/api/v1/table/fly_v31/node/${supervoxelId}/root?int64_as_str=1&middle_auth_token=${authToken}`, { signal: controller.signal })
-          .then(response => response.json())
-          .then(response => {
-            if (!response) return
-            if (callback) {
-              callback(response.root_id)
-            }
-          })
-          .catch(() => callback(null))
+        let promise = fetch(`https://prodv1.flywire-daf.com/segmentation/api/v1/table/fly_v31/node/${supervoxelId}/root?int64_as_str=1&middle_auth_token=${authToken}`, { signal: controller.signal })
 
-        return controller
+        if (!returnPromise) {
+          promise
+            .then(response => response.json())
+            .then(response => {
+              if (!response) return
+              if (callback) {
+                callback(response.root_id)
+              }
+            })
+            .catch(() => callback(null))
+
+          return controller
+        }
+
+        return promise
       }
 
 
       static getRootIdByCurrentCoords(callback) {
-        Dock.getSegmentId(...Dock.getCurrentCoords(), result => segIdCallback(result))
-
-        function segIdCallback(segId) {
-          Dock.getRootId(segId, result => rootIdCallback(result))
-        }
-
-        function rootIdCallback(rootId) {
-          callback(rootId)
-        }
+        Dock.getRootIdByCoords(...Dock.getCurrentCoords(), rootId => callback(rootId))
       }
 
 
@@ -683,13 +699,17 @@
 
 
       static getCurrentCoords() {
-        let coords = document
-          .querySelector('.neuroglancer-position-widget-input')
-          .value
-          .split(',')
-          .map(el => el.trim())
+        // let coords = document
+        //   .querySelector('.neuroglancer-position-widget-input')
+        //   .value
+        //   .split(',')
+        //   .map(el => el.trim())
 
-        return coords
+        // return coords
+        let coords = [...viewer.navigationState.pose.position.spatialCoordinates]
+        let voxelSize = Dock.getVoxelSize()
+
+        return [coords[0] / voxelSize[0], coords[1] / voxelSize[1], coords[2] / voxelSize[2]]
       }
 
       
@@ -699,15 +719,16 @@
         viewer.layerSpecification.setSpatialCoordinates(coords)
       }
 
-      // TODO: check: viewer.mouseState.position
+      //// TODO: check: viewer.mouseState.position
       static getCurrentMouseCoords() {
-        let coords = document
-          .querySelector('.neuroglancer-mouse-position-widget')
-          .textContent
-          .split(',')
-          .map(el => el.trim().split(' ')[1])
+        // let coords = document
+        //   .querySelector('.neuroglancer-mouse-position-widget')
+        //   .textContent
+        //   .split(',')
+        //   .map(el => el.trim().split(' ')[1])
 
-        return coords
+        // return coords
+        return [...viewer.mouseState.position]
       }
 
 
