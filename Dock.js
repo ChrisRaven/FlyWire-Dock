@@ -859,6 +859,8 @@
 
         add(coords, type = 0, description = '') {
           let annotationLayer = Dock.annotations.getAnnotationLayer()
+          
+          if (!annotationLayer) return false
 
           let ref = annotationLayer.add({point: coords, type: type})
 
