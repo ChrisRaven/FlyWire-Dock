@@ -1124,13 +1124,13 @@ class Dialog {
 
   
   #ok() {
-    this.#okCallback()
+    this.#okCallback && this.#okCallback()
     this.hide()
   }
 
 
   #cancel() {
-    this.#cancelCallback()
+    this.#cancelCallback && this.#cancelCallback()
     this.hide()
   }
   
