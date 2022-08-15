@@ -1037,6 +1037,40 @@
             callback('https://ngl.flywire.ai/?json_url=' + response)
           })
       }
+
+
+      
+      static #merge(target, key, value) {
+        let types = ['number', 'string', 'boolean', 'undefined', 'bigint']
+        let typeOfValue = typeof value
+
+        let nonExistent = typeof target[key] === 'undefined'
+        let isNull = value === null
+        let isPrimitive = types.includes(typeOfValue)
+        let isUndefined = value === undefined
+
+        if (nonExistent || isPrimitive || isUndefined) {
+          target[key] = value
+        }
+        // because JSON can't store undefined, we have to convert them to null when writing
+        // and then converting back to undefined at reading
+        if (isNull) {
+          target[key] = undefined
+        }
+        else if (Array.isArray(value)) {
+          value.forEach((el, index) => Dock.#merge(target[key], index, el))
+        }
+        else if (typeOfValue === 'object') {
+          Dock.mergeObjects(target[key], value)
+        }
+      }
+
+
+      static mergeObjects(target, source) {
+        for (const [key, value] of Object.entries(source)) {
+          Dock.#merge(target, key, value)
+        }
+      }
     }
     // END of Dock class
 }
