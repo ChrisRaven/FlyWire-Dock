@@ -731,7 +731,8 @@
 
         // return coords
         let mousePos = [...viewer.mouseState.position]
-        let voxelSize = Dock.getVoxelSize
+        let voxelSize = Dock.getVoxelSize()
+
         return [mousePos[0] / voxelSize[0], mousePos[1] / voxelSize[1], mousePos[2] / voxelSize[2]]
       }
 
@@ -1058,6 +1059,9 @@
           target[key] = undefined
         }
         else if (Array.isArray(value)) {
+          if (!target[key]) {
+            target[key] = []
+          }
           value.forEach((el, index) => Dock.#merge(target[key], index, el))
         }
         else if (typeOfValue === 'object') {
