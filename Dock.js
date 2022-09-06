@@ -644,10 +644,14 @@
             .then(response => {
               if (!response) return
               if (callback) {
+                //console.log('here', response, response.root_id)
                 callback(response.root_id)
               }
             })
-            .catch(() => callback(null))
+            .catch((error) => {
+              //console.error('Dock.getRootId: ', error)
+              callback(null)
+            })
 
           return controller
         }
@@ -662,13 +666,7 @@
 
 
       static stringToUint64(s) {
-        function Result(low, high) {
-          this.low = low
-          this.high = high
-        }
-        Result.prototype.toString = () => s
-
-        if (!s) return new Result(0, 0)
+        if (!s) return new Uint64(0, 0)
 
         const MAX_INT_LENGTH = 9
         const MAX_HEX_INT_LENGTH = 8
@@ -686,7 +684,7 @@
         low = parseInt(low, 16)
         high = high ? parseInt(high, 16) : 0
 
-        return new Result(low, high)
+        return new Uint64(low, high)
       }
 
       
@@ -696,7 +694,8 @@
         let g = parseInt(colorObj.substring(2, 4), 16)
         let b = parseInt(colorObj.substring(4, 6), 16)
         // color will always be below FFFFFFFF, so there's no need to convert it to Uint64
-        return { low: r * 256 * 256 + g * 256 + b, high: 0 }
+
+        return new Uint64(r * 256 * 256 + g * 256 + b, 0)
       }
 
 
@@ -1075,6 +1074,41 @@
           Dock.#merge(target, key, value)
         }
       }
+
+
+      static addToRightTab(topTab, rightTab, callback) {
+        let done = false
+        let selectedTopTabRemover = null
+        let selectedRightTabRemover = null
+        isCorrect()
+
+        const layer = viewer.selectedLayer
+        selectedTopTabRemover = layer.changed.add(() => {
+          isCorrect()
+        })
+          
+        selectedRightTabRemover = layer.layer.layer.tabs.changed.add(() => {
+          isCorrect()
+        })
+
+        function isCorrect() {
+          if (done) return
+
+          const layer = viewer.selectedLayer
+          const topTabValue = layer.layer.initialSpecification.type
+          const rightTabValue = layer.layer.layer.tabs.selectedValue || layer.layer.layer.tabs.defaultValue
+          const result = (topTabValue === topTab) && (rightTabValue === rightTab)
+
+          if (result) {
+            selectedTopTabRemover && selectedTopTabRemover()
+            selectedRightTabRemover && selectedRightTabRemover()
+            callback()
+            done = true
+          }
+
+          return result
+        }
+      }
     }
     // END of Dock class
 }
@@ -1271,3 +1305,268 @@ select(t){var e=this.getStore(),r={};return t.forEach(t=>r[t]=e[t]),r}upsert(t){
 static stringify(t){return n(t)}static parse(t){return s(t)}static _add(t){this._all=this._all||[],this._all.push(t)}static _matchingInstance(t){for(var e=this._all||[],r=e.length,s=0;s<r;s++)if(e[s].isEqual(t))return e[s];return this._add(t),t}}class h extends u{constructor(t){return super(t),this.constructor._matchingInstance(this)}select(t){var e={},r=[];return t.forEach(t=>r.push(this._tx("readonly","get",t,void 0).then(r=>e[t]=r))),Promise.all(r).then(()=>e)}upsert(t){var e=[];for(var r in t)e.push(this._tx("readwrite","put",t[r],r));return Promise.all(e).then(()=>!0)}delete(t){var e=[];return t.forEach(t=>e.push(this._tx("readwrite","delete",t,void 0))),Promise.all(e).then(()=>!0)}deleteAll(){return this._tx("readwrite","clear",void 0,void 0)}_tx(t,e,r,s){var n=this;return this.store=this.store||this.createStore(n.tableName),this.store.then(i=>new Promise((a,o)=>{var c=i.transaction(n.tableName,t).objectStore(n.tableName),l=c[e].call(c,r,s);l.onsuccess=t=>a(t.target.result),l.onerror=t=>o(t.error)}))}getStore(){return this._tx("readonly","getAllKeys",void 0,void 0).then(this.select.bind(this))}createStore(t){return new Promise((e,r)=>{var s=window.indexedDB.open(t,1);s.onupgradeneeded=()=>{s.result.createObjectStore(t)},s.onsuccess=()=>e(s.result),s.onerror=()=>r(s.error)})}hasStore(){return!!window.indexedDB}static get type(){return"indexeddb"}}class p extends u{constructor(t){return super(t),this.constructor._matchingInstance(this)}parsedData(){}select(t){var e=t.map(()=>"?").join(", ");// Need to give array for ? values in executeSql's 2nd argument
 return this.execSql("SELECT key, value FROM ".concat(this.tableName," WHERE key in (").concat(e,")"),t)}upsert(t){return this.getWebsql().transaction(e=>{for(var r in t)e.executeSql("INSERT OR REPLACE INTO ".concat(this.tableName,"(key, value) VALUES (?, ?)"),[r,this.constructor.stringify(t[r])])}),!0}delete(t){var e=t.map(()=>"?").join(", ");return this.execSql("DELETE FROM ".concat(this.tableName," WHERE key in (").concat(e,")"),t),!0}deleteAll(){return this.execSql("DELETE FROM ".concat(this.tableName)),!0}getStore(){return this.execSql("SELECT key, value FROM ".concat(this.tableName))}hasStore(){return!!window.openDatabase}getWebsql(){return this._store?this._store:(this._store=window.openDatabase("ss",1,this.description,this.size),this.execSql("CREATE TABLE IF NOT EXISTS ".concat(this.tableName," (key unique, value)")),this._store)}execSql(t,e=[]){var r=this;return new Promise(s=>{r.getWebsql().transaction((function(n){n.executeSql(t,e,(t,e)=>{s(r.parseResults(e))})}))})}parseResults(t){for(var e={},r=t.rows.length,s=0;s<r;s++)e[t.rows.item(s).key]=this.constructor.parse(t.rows.item(s).value);return e}static get type(){return"websql"}}class d extends u{constructor(t){return super(t),this.constructor._matchingInstance(this)}select(t){var e={};return t.forEach(t=>{var r=this.constructor.parse(this.getLocalStorage().getItem(this.tableName+"/"+t));null!==r&&(e[t]=r)}),e}upsert(t){for(var e in t)this.getLocalStorage().setItem(this.tableName+"/"+e,this.constructor.stringify(t[e]));return!0}delete(t){return t.map(t=>this.getLocalStorage().removeItem(this.tableName+"/"+t)),!0}deleteAll(){return Object.keys(this.getLocalStorage()).forEach(t=>{0===t.indexOf(this.tableName)&&this.getLocalStorage().removeItem(t)}),!0}getStore(){return this.select(Object.keys(this.getLocalStorage()).map(t=>{if(0===t.indexOf(this.tableName))return t.slice(this.tableName.length+1)}).filter(t=>void 0!==t))}getLocalStorage(){return window.localStorage}hasStore(){return!!window.localStorage}static get type(){return"localstorage"}}var f=new Date(0).toUTCString(),g="%3D",S=new RegExp(g,"g");class v extends u{constructor(t){return super(t),this.constructor._matchingInstance(this)}upsert(t){for(var e in t)this.setStore("".concat(this.tableName,"/").concat(e,"=").concat(this.constructor.stringify(t[e]).replace(/=/g,g),"; path=/"));return!0}delete(t){return t.forEach(t=>this.setStore("".concat(this.tableName,"/").concat(t,"=; expires=").concat(f,"; path=/"))),!0}deleteAll(){return this.keys().then(this.delete.bind(this))}getStore(){var t=document.cookie,e={};return t.split("; ").forEach(t=>{var[r,s]=t.split("=");0===r.indexOf(this.tableName)&&(e[r.slice(this.tableName.length+1)]=this.constructor.parse(s.replace(S,"=")))}),e}setStore(t){document.cookie=t}hasStore(){return void 0!==document.cookie}static get type(){return"cookies"}}class y extends u{constructor(t){return super(t),this.constructor._matchingInstance(this)}hasStore(){return!0}static get type(){return"jsonstorage"}}var m={[h.type]:h,[p.type]:p,[d.type]:d,[v.type]:v,[y.type]:y};return t.Cookies=v,t.IndexedDB=h,t.JsonStorage=y,t.LocalStorage=d,t.WebSQL=p,t.availableStores=m,t.getStorage=function(t){return function(t=[],e={}){t=t.concat([h.type,p.type,d.type,v.type,y.type]);for(var r=0;r<t.length;r++){var s=m[t[r]];if(s){var n=new s(e);if(n.isSupported())return n}}throw Error("No compatible storage found. Available types: "+Object.keys(m).join(", ")+".")}("string"==typeof t?[t]:(t||{}).priority,"string"==typeof t?{}:t)},t.default&&(t=t.default),t}({});
 /*! (c) @aadityataparia */
+
+
+
+// Source: neuroglancer -> util -> uint64.ts
+
+const randomTempBuffer = new Uint32Array(2);
+
+const trueBase = 0x100000000;
+
+let stringConversionData = [];
+for (let base = 2; base <= 36; ++base) {
+  let lowDigits = Math.floor(32 / Math.log2(base));
+  let lowBase = Math.pow(base, lowDigits);
+  let patternString = `^[0-${String.fromCharCode('0'.charCodeAt(0) + Math.min(9, base - 1))}`;
+  if (base > 10) {
+    patternString += `a-${String.fromCharCode('a'.charCodeAt(0) + base - 11)}`;
+    patternString += `A-${String.fromCharCode('A'.charCodeAt(0) + base - 11)}`;
+  }
+  let maxDigits = Math.ceil(64 / Math.log2(base));
+  patternString += `]{1,${maxDigits}}$`;
+  let pattern = new RegExp(patternString);
+  stringConversionData[base] = {lowDigits, lowBase, pattern};
+}
+
+class Uint64 {
+  low = 0
+  high = 0
+
+  constructor(low = 0, high = 0) {
+    this.low = low
+    this.high = high
+  }
+
+  clone() {
+    return new Uint64(this.low, this.high);
+  }
+
+  assign(x) {
+    this.low = x.low;
+    this.high = x.high;
+  }
+
+  toString(base = 10) {
+    let vLow = this.low, vHigh = this.high;
+    if (vHigh === 0) {
+      return vLow.toString(base);
+    }
+    vHigh *= trueBase;
+    let {lowBase, lowDigits} = stringConversionData[base];
+    let vHighExtra = vHigh % lowBase;
+    vHigh = Math.floor(vHigh / lowBase);
+    vLow += vHighExtra;
+    vHigh += Math.floor(vLow / lowBase);
+    vLow = vLow % lowBase;
+    let vLowStr = vLow.toString(base);
+    return vHigh.toString(base) + '0'.repeat(lowDigits - vLowStr.length) + vLowStr;
+  }
+
+  /**
+   * Returns true if a is strictly less than b.
+   */
+  static less(a, b) {
+    return a.high < b.high || (a.high === b.high && a.low < b.low);
+  }
+
+  /**
+   * Returns a negative number if a is strictly less than b, 0 if a is equal to b, or a positive
+   * number if a is strictly greater than b.
+   */
+  static compare(a, b) {
+    return (a.high - b.high) || (a.low - b.low);
+  }
+
+  static ZERO = new Uint64(0, 0);
+  static ONE = new Uint64(1, 0);
+
+  static equal(a, b) {
+    return a.low === b.low && a.high === b.high;
+  }
+
+  static min(a, b) {
+    return Uint64.less(a, b) ? a : b;
+  }
+
+  static max(a, b) {
+    return Uint64.less(a, b) ? b : a;
+  }
+
+  static random() {
+    crypto.getRandomValues(randomTempBuffer);
+    return new Uint64(randomTempBuffer[0], randomTempBuffer[1]);
+  }
+
+  tryParseString(s, base = 10) {
+    const {lowDigits, lowBase, pattern} = stringConversionData[base];
+    if (!pattern.test(s)) {
+      return false;
+    }
+    if (s.length <= lowDigits) {
+      this.low = parseInt(s, base);
+      this.high = 0;
+      return true;
+    }
+    const splitPoint = s.length - lowDigits;
+    const lowPrime = parseInt(s.substr(splitPoint), base);
+    const highPrime = parseInt(s.substr(0, splitPoint), base);
+
+    let high, low;
+
+    if (lowBase === trueBase) {
+      high = highPrime;
+      low = lowPrime;
+    } else {
+      const highRemainder = Math.imul(highPrime, lowBase) >>> 0;
+      high = uint32MultiplyHigh(highPrime, lowBase) +
+          (Math.imul(Math.floor(highPrime / trueBase), lowBase) >>> 0);
+      low = lowPrime + highRemainder;
+      if (low >= trueBase) {
+        ++high;
+        low -= trueBase;
+      }
+    }
+    if ((low >>> 0) !== low || ((high >>> 0) !== high)) {
+      return false;
+    }
+    this.low = low;
+    this.high = high;
+    return true;
+  }
+
+  parseString(s, base = 10) {
+    if (!this.tryParseString(s, base)) {
+      throw new Error(`Failed to parse string as uint64 value: ${JSON.stringify(s)}.`);
+    }
+    return this;
+  }
+
+  static parseString(s, base = 10) {
+    let x = new Uint64();
+    return x.parseString(s, base);
+  }
+
+  valid() {
+    let {low, high} = this;
+    return ((low >>> 0) === low) && ((high >>> 0) === high);
+  }
+
+  toJSON() {
+    return this.toString();
+  }
+
+  static lshift(out, input, bits) {
+    const {low, high} = input;
+    if (bits === 0) {
+      out.low = low;
+      out.high = high;
+    } else if (bits < 32) {
+      out.low = low << bits;
+      out.high = (high << bits) | (low >>> (32 - bits));
+    } else {
+      out.low = 0;
+      out.high = low << (bits - 32);
+    }
+    return out;
+  }
+
+  static rshift(out, input, bits) {
+    const {low, high} = input;
+    if (bits === 0) {
+      out.low = low;
+      out.high = high;
+    } else if (bits < 32) {
+      out.low = (low >>> bits) | (high << (32 - bits));
+      out.high = high >>> bits;
+    } else {
+      out.low = high >>> (bits - 32);
+      out.high = 0;
+    }
+    return out;
+  }
+
+  static or(out, a, b) {
+    out.low = a.low | b.low;
+    out.high = a.high | b.high;
+    return out;
+  }
+
+  static xor(out, a, b) {
+    out.low = a.low ^ b.low;
+    out.high = a.high ^ b.high;
+    return out;
+  }
+
+  static and(out, a, b) {
+    out.low = a.low & b.low;
+    out.high = a.high & b.high;
+    return out;
+  }
+
+  static add(out, a, b) {
+    let lowSum = a.low + b.low;
+    let highSum = a.high + b.high;
+    const low = lowSum >>> 0;
+    if (low !== lowSum) highSum += 1;
+    out.low = low;
+    out.high = highSum >>> 0;
+    return out;
+  }
+
+  static addUint32(out, a, b) {
+    let lowSum = a.low + b;
+    let highSum = a.high;
+    const low = lowSum >>> 0;
+    if (low !== lowSum) highSum += 1;
+    out.low = low;
+    out.high = highSum >>> 0;
+    return out;
+  }
+
+  static decrement(out, input) {
+    let {low, high} = input;
+    if (low === 0) {
+      high -= 1;
+    }
+    out.low = (low - 1) >>> 0;
+    out.high = high >>> 0;
+    return out;
+  }
+
+  static increment(out, input) {
+    let {low, high} = input;
+    if (low === 0xFFFFFFFF) high += 1;
+    out.low = (low + 1) >>> 0;
+    out.high = high >>> 0;
+    return out;
+  }
+
+  static subtract(out, a, b) {
+    let lowSum = a.low - b.low;
+    let highSum = a.high - b.high;
+    const low = lowSum >>> 0;
+    if (low !== lowSum) highSum -= 1;
+    out.low = low;
+    out.high = highSum >>> 0;
+    return out;
+  }
+
+  static multiplyUint32(out, a, b) {
+    const {low, high} = a;
+    out.low = Math.imul(low, b) >>> 0;
+    out.high = (Math.imul(high, b) + uint32MultiplyHigh(low, b)) >>> 0;
+    return out;
+  }
+
+  static lowMask(out, bits) {
+    if (bits <= 32) {
+      out.high = 0;
+      out.low = 0xffffffff >>> (32 - bits);
+    } else {
+      out.high = 0xffffffff >>> (bits - 32);
+      out.low = 0xffffffff;
+    }
+    return out;
+  }
+}
