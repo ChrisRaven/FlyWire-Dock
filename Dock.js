@@ -1076,7 +1076,9 @@
       }
 
 
-      static addToRightTab(topTab, rightTab, callback) {
+      static addToRightTab(topTab, rightTab, callback, selector = '') {
+        if (selector && document.querySelector(selector)) return
+
         let done = false
         let selectedTopTabRemover = null
         let selectedRightTabRemover = null
@@ -1095,15 +1097,19 @@
           if (done) return
 
           const layer = viewer.selectedLayer
+          if (!layer.layer || !layer.layer.initialSpecification) return
+
           const topTabValue = layer.layer.initialSpecification.type
           const rightTabValue = layer.layer.layer.tabs.selectedValue || layer.layer.layer.tabs.defaultValue
           const result = (topTabValue === topTab) && (rightTabValue === rightTab)
 
           if (result) {
-            selectedTopTabRemover && selectedTopTabRemover()
-            selectedRightTabRemover && selectedRightTabRemover()
+            if (!selector) {
+              selectedTopTabRemover && selectedTopTabRemover()
+              selectedRightTabRemover && selectedRightTabRemover()
+              done = true
+            }
             callback()
-            done = true
           }
 
           return result
