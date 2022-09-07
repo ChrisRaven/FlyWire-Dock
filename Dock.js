@@ -1076,43 +1076,32 @@
       }
 
 
-      static addToRightTab(topTab, rightTab, callback, selector = '') {
-        if (selector && document.querySelector(selector)) return
-
-        let done = false
-        let selectedTopTabRemover = null
-        let selectedRightTabRemover = null
-        isCorrect()
-
+      static addToRightTab(topTab, rightTab, callback) {
+        const id = Dock.getRandomHexString()
         const layer = viewer.selectedLayer
-        selectedTopTabRemover = layer.changed.add(() => {
-          isCorrect()
-        })
-          
-        selectedRightTabRemover = layer.layer.layer.tabs.changed.add(() => {
-          isCorrect()
-        })
+        const node = layer.layer.layer.tabs.options.get(rightTab).getter().element
 
-        function isCorrect() {
-          if (done) return
+        if (node && node.dataset && node.dataset['kk-utils-' + id] === id) return
 
+        checkTabAndAddIfCorrect()
+
+        layer.changed.add(checkTabAndAddIfCorrect)
+        layer.layer.layer.tabs.changed.add(checkTabAndAddIfCorrect)
+
+        function checkTabAndAddIfCorrect() {
           const layer = viewer.selectedLayer
           if (!layer.layer || !layer.layer.initialSpecification) return
 
           const topTabValue = layer.layer.initialSpecification.type
           const rightTabValue = layer.layer.layer.tabs.selectedValue || layer.layer.layer.tabs.defaultValue
-          const result = (topTabValue === topTab) && (rightTabValue === rightTab)
+          const isCorrect = (topTabValue === topTab) && (rightTabValue === rightTab)
 
-          if (result) {
-            if (!selector) {
-              selectedTopTabRemover && selectedTopTabRemover()
-              selectedRightTabRemover && selectedRightTabRemover()
-              done = true
-            }
+          if (isCorrect) {
+            node.dataset['kk-utils-' + id] = id
             callback()
           }
 
-          return result
+          return isCorrect
         }
       }
     }
