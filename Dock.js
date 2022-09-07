@@ -1077,12 +1077,11 @@
 
 
       static addToRightTab(topTab, rightTab, callback) {
-        // getAttribute() and setAttribute() instead of dataset, because of the "id" which isn't dataset-name compatible
         const id = Dock.getRandomHexString()
         const layer = viewer.selectedLayer
         const node = layer.layer.layer.tabs.options.get(rightTab).getter().element
 
-        if (node && node.dataset && node.getAttribute('data-kk-utils-' + id) === id) return
+        if (node && node.dataset && node.dataset['kk-utils-' + id] === id) return
 
         checkTabAndAddIfCorrect()
 
@@ -1098,7 +1097,7 @@
           const isCorrect = (topTabValue === topTab) && (rightTabValue === rightTab)
 
           if (isCorrect) {
-            node.setAttribute('data-kk-utils-' + id, id)
+            node.dataset['kk-utils-' + id] = id
             callback()
           }
 
