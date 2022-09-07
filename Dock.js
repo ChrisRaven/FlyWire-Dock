@@ -1077,31 +1077,54 @@
 
 
       static addToRightTab(topTab, rightTab, callback) {
+        // getAttribute() and setAttribute() instead of dataset, because of the "id" which isn't dataset-name compatible
         const id = Dock.getRandomHexString()
         const layer = viewer.selectedLayer
-        const node = layer.layer.layer.tabs.options.get(rightTab).getter().element
-
-        if (node && node.dataset && node.dataset['kk-utils-' + id] === id) return
+        if (!layer || !layer.layer) return
 
         checkTabAndAddIfCorrect()
-
         layer.changed.add(checkTabAndAddIfCorrect)
-        layer.layer.layer.tabs.changed.add(checkTabAndAddIfCorrect)
-
+        
         function checkTabAndAddIfCorrect() {
-          const layer = viewer.selectedLayer
-          if (!layer.layer || !layer.layer.initialSpecification) return
+          if (!layer || !layer.layer || !layer.layer.initialSpecification) return
 
+          const tabs = layer.layer.layer.tabs
           const topTabValue = layer.layer.initialSpecification.type
-          const rightTabValue = layer.layer.layer.tabs.selectedValue || layer.layer.layer.tabs.defaultValue
-          const isCorrect = (topTabValue === topTab) && (rightTabValue === rightTab)
+          const rightTabValue = tabs.selectedValue || tabs.defaultValue
+          const isCorrectTab = (topTabValue === topTab) && (rightTabValue === rightTab)
+          if (!isCorrectTab) return
 
-          if (isCorrect) {
-            node.dataset['kk-utils-' + id] = id
+          const node = tabs.options.get(rightTab).getter().element
+          const alreadySet = node && node.dataset && node.getAttribute('data-kk-utils-' + id) === id
+  
+          if (alreadySet) return
+
+            node.setAttribute('data-kk-utils-' + id, id)
             callback()
-          }
+        }
+      }
 
-          return isCorrect
+      static addToMainTab(tab, callback) {
+        const id = Dock.getRandomHexString()
+        const layer = viewer.selectedLayer
+        if (!layer || !layer.layer) return
+
+        checkLayerAndAddIfCorrect()
+        layer.changed.add(checkLayerAndAddIfCorrect)
+
+        function checkLayerAndAddIfCorrect() {
+          if (!layer || !layer.layer || !layer.layer.initialSpecification) return
+          
+          const isCorrectLayer = layer.layer.initialSpecification.type === tab
+          if (!isCorrectLayer) return
+
+          const node = document.querySelector('div[data-type="' + tab + '"]')
+          const alreadySet = node && node.dataset && node.getAttribute('data-kk-utils-' + id) === id
+          
+          if (alreadySet) return
+          
+          node.setAttribute('data-kk-utils-' + id, id)
+          callback()
         }
       }
     }
