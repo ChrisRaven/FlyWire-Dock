@@ -775,6 +775,19 @@
       }
 
 
+      static getRandomAlphaString(numChars = 16) {
+        const chars = 'abcdefghijklmnopqurstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        let s = ''
+
+        for (let i = 0; i < numChars; ++i) {
+          const index = Math.floor(Math.random() * chars.length)
+          s += chars[index]
+        }
+
+        return s
+      }
+
+
       // Source: \neuroglancer\src\neuroglancer\annotation\annotation_layer_view.ts: AnnotationType
       static annotations = {
         type: {
@@ -1077,8 +1090,7 @@
 
 
       static addToRightTab(topTab, rightTab, callback) {
-        // getAttribute() and setAttribute() instead of dataset, because of the "id" which isn't dataset-name compatible
-        const id = Dock.getRandomHexString()
+        const id = Dock.getRandomAlphaString().toUpperCase()
         const layer = viewer.selectedLayer
         if (!layer || !layer.layer) return
 
@@ -1094,18 +1106,27 @@
           const isCorrectTab = (topTabValue === topTab) && (rightTabValue === rightTab)
           if (!isCorrectTab) return
 
-          const node = tabs.options.get(rightTab).getter().element
-          const alreadySet = node && node.dataset && node.getAttribute('data-kk-utils-' + id) === id
+          let node
+
+          tabs.options.forEach(el => {
+            if (el.name === rightTab) {
+              node = el.getter().element
+            }
+          })
+
+          if (!node) return
+          
+          const alreadySet = node.dataset && node.dataset['kkUtils' + id] === id
   
           if (alreadySet) return
 
-            node.setAttribute('data-kk-utils-' + id, id)
+            node.dataset['kkUtils' + id] = id
             callback()
         }
       }
 
       static addToMainTab(tab, callback) {
-        const id = Dock.getRandomHexString()
+        const id = Dock.getRandomAlphaString().toUpperCase()
         const layer = viewer.selectedLayer
         if (!layer || !layer.layer) return
 
@@ -1119,11 +1140,11 @@
           if (!isCorrectLayer) return
 
           const node = document.querySelector('div[data-type="' + tab + '"]')
-          const alreadySet = node && node.dataset && node.getAttribute('data-kk-utils-' + id) === id
+          const alreadySet = node && node.dataset && node.dataset['kkUtils' + id] === id
           
           if (alreadySet) return
           
-          node.setAttribute('data-kk-utils-' + id, id)
+          node.dataset['kkUtils' + id] = id
           callback()
         }
       }
@@ -1588,3 +1609,6 @@ class Uint64 {
     return out;
   }
 }
+
+
+
