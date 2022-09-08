@@ -1096,31 +1096,23 @@
 
         checkTabAndAddIfCorrect()
         layer.changed.add(checkTabAndAddIfCorrect)
-        
+
         function checkTabAndAddIfCorrect() {
           if (!layer || !layer.layer || !layer.layer.initialSpecification) return
 
           const tabs = layer.layer.layer.tabs
           const topTabValue = layer.layer.initialSpecification.type
           const rightTabValue = tabs.selectedValue || tabs.defaultValue
-          const isCorrectTab = (topTabValue === topTab) && (rightTabValue === rightTab)
+          const isCorrectTab = (topTabValue === topTab) && (rightTabValue === rightTab.toLowerCase())
           if (!isCorrectTab) return
 
-          let node
+          const tabNode = document.getElementsByClassName('neuroglancer-selected-tab-label')[0]
+          if (!tabNode) return
 
-          tabs.options.forEach(el => {
-            if (el.name === rightTab) {
-              node = el.getter().element
-            }
-          })
-
-          if (!node) return
-          
-          const alreadySet = node.dataset && node.dataset['kkUtils' + id] === id
-  
+          const alreadySet = tabNode && tabNode.dataset && tabNode.dataset['kkUtils' + id] === id
           if (alreadySet) return
 
-            node.dataset['kkUtils' + id] = id
+            tabNode.dataset['kkUtils' + id] = id
             callback()
         }
       }
