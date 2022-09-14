@@ -581,6 +581,7 @@
         this.#grid.style.display = window.getComputedStyle(this.#grid).display === 'none' ? 'block' : 'none'        
       }
 
+      
       // helper methods
       static ls = {
         keyPrefix: `${userId}-${DOCK_ID}-`,
@@ -625,13 +626,14 @@
         })
       }
 
+
       static getRootIdByCoords(x, y, z, callback) {
         Dock.getSegmentId(x, y, z, segmentId => {
           Dock.getRootId(segmentId, rootId => callback(rootId))
         })
       }
 
-// viewer.selectedLayer.layer.layer_.chunkedGraphLayer.getRoot({segmentId: '720575940626686089'}).then(result => console.log(result))
+
       static getRootId(supervoxelId, callback, returnPromise = false) {
         let authToken = localStorage.getItem('auth_token')
         let controller = new AbortController()
@@ -642,14 +644,10 @@
           promise
             .then(response => response.json())
             .then(response => {
-              if (!response) return
-              if (callback) {
-                //console.log('here', response, response.root_id)
-                callback(response.root_id)
-              }
+              if (!response || !response.root_id || !callback) return
+              callback(response.root_id)
             })
             .catch((error) => {
-              //console.error('Dock.getRootId: ', error)
               callback(null)
             })
 
@@ -1360,13 +1358,49 @@ for (let base = 2; base <= 36; ++base) {
   stringConversionData[base] = {lowDigits, lowBase, pattern};
 }
 
+
+function uint32MultiplyHigh(a, b) {
+  a >>>= 0;
+  b >>>= 0;
+
+  const a00 = a & 0xFFFF, a16 = a >>> 16;
+  const b00 = b & 0xFFFF, b16 = b >>> 16;
+
+  let c00 = a00 * b00;
+  let c16 = (c00 >>> 16) + (a16 * b00);
+  let c32 = c16 >>> 16;
+  c16 = (c16 & 0xFFFF) + (a00 * b16);
+  c32 += c16 >>> 16;
+  let c48 = c32 >>> 16;
+  c32 = (c32 & 0xFFFF) + (a16 * b16);
+  c48 += c32 >>> 16;
+
+  return (((c48 & 0xFFFF) << 16) | (c32 & 0xFFFF)) >>> 0;
+}
+
+
 class Uint64 {
   low = 0
   high = 0
 
-  constructor(low = 0, high = 0) {
-    this.low = low
-    this.high = high
+  constructor(low, high) {
+    if (typeof low === 'string' && typeof high === 'undefined') {
+      this.low = 0
+      this.high = 0
+      this.tryParseString(low)
+    }
+    else {
+      if (typeof low === 'undefined') {
+        low = 0
+      }
+
+      if (typeof high === 'undefined') {
+        high = 0
+      }
+
+      this.low = low
+      this.high = high
+    }
   }
 
   clone() {
@@ -1463,6 +1497,7 @@ class Uint64 {
     }
     this.low = low;
     this.high = high;
+
     return true;
   }
 
