@@ -898,6 +898,15 @@
         }
       }
 
+
+      static addCss(css) {
+        const style = document.createElement('style')
+        style.type = 'text/css'
+        style.textContent = css
+        document.head.appendChild(style)
+      }
+
+
       static dialog(options) {
         return new Dialog(options)
       }
@@ -1045,7 +1054,7 @@
         })
           .then(res => res.json())
           .then(response => {
-            callback('https://ngl.flywire.ai/?json_url=' + response)
+            callback && callback('https://ngl.flywire.ai/?json_url=' + response)
           })
       }
 
@@ -1223,7 +1232,7 @@ class Dialog {
     this.#destroyAfterClosing && this.#destroy()
   }
 
-  
+  // TODO: add ability to check fields and display errors, if something is wrong. Don't close the dialog, if there are errors. okCallback should return a bool
   #ok() {
     this.#okCallback && this.#okCallback()
     this.hide()
