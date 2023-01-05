@@ -659,7 +659,8 @@
 
 
       static getRootIdByCurrentCoords(callback) {
-        Dock.getRootIdByCoords(...Dock.getCurrentCoords(), rootId => callback(rootId))
+        const coords = Dock.getCurrentCoords()
+        Dock.getRootIdByCoords(coords[0] * 4, coords[1] * 4, coords[2], rootId => callback(rootId))
       }
 
 
