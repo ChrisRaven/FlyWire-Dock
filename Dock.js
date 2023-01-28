@@ -1170,7 +1170,7 @@ class Dialog {
   id
 
   constructor({ html, id, css, okCallback, cancelCallback, okLabel = 'OK', cancelLabel = 'Cancel', afterCreateCallback: afterCreateCallback, destroyAfterClosing = false, width = 200 }) {
-    if (!content) return console.error('Dock.dialog: missing content')
+    // if (!content) return console.error('Dock.dialog: missing content') // ???
     if (!id) return console.error('Dock.dialog: missing id')
 
     this.#html = html
