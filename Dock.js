@@ -785,6 +785,13 @@
         return s
       }
 
+      
+      // Source: https://stackoverflow.com/a/1152508
+      static getRandomColor() {
+        return '#' + (0x1000000 + Math.random() * 0xffffff).toString(16).substr(1, 6)
+      }
+
+
 
       // Source: \neuroglancer\src\neuroglancer\annotation\annotation_layer_view.ts: AnnotationType
       static annotations = {
@@ -1146,6 +1153,20 @@
           node.dataset['kkUtils' + id] = id
           callback()
         }
+      }
+
+      
+      // Source: ChatGPT
+      static arraySubtraction(array1, array2) {
+        const result = [];
+
+        for (let i = 0; i < array1.length; i++) {
+          if (!array2.includes(array1[i])) {
+            result.push(array1[i]);
+          }
+        }
+
+        return result;
       }
     }
     // END of Dock class
