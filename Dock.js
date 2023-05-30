@@ -16,17 +16,27 @@
     if (globalThis.dockIsReady) return
     userId = userId.textContent
     globalThis.dockIsReady = true
+
     main()
+
+    const dockReadyEvent = new Event('dock-ready')
+    document.dispatchEvent(dockReadyEvent)
   }
   
 
   function main() {
 
     // proxy for fetch
-    let f = globalThis.fetch
+    const f = globalThis.fetch
     globalThis.fetch = async (...args) => {
-      let res = f(...args)
-
+      // temporary turn off leaderboard checking, so there aren't
+      // so many errors in the console
+      if (args[0].includes('flywire-leaderboard') || args[0].includes('user_statistics')) {
+        return {}
+      }
+  
+      const res = f(...args)
+  
       res
         .then(response => response.clone())
         .then(response => response.json())
@@ -51,7 +61,7 @@
             }
           }))
         })
-
+  
       return res
     }
 
