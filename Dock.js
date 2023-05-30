@@ -1168,7 +1168,7 @@
       
       // Source: ChatGPT
       static arraySubtraction(array1, array2) {
-        const result = [];
+        const result = []
 
         for (let i = 0; i < array1.length; i++) {
           if (!array2.includes(array1[i])) {
@@ -1176,7 +1176,40 @@
           }
         }
 
-        return result;
+        return result
+      }
+
+      static generateChunkToSegMap() {
+        const mapping = new Map()
+    
+        viewer.selectedLayer.layer_.layer_.displayState.segmentEquivalences.rpc.objects.forEach(obj => {
+          if (obj.constructor.name !== 'FragmentSource') return
+          if (obj.meshSource.constructor.name !== 'GrapheneMeshSource') return
+    
+          obj.meshSource.chunks.forEach((value, key) => {
+            const segId = new Uint64(...key.split(',').map(el => parseInt(el, 10))).toString()
+            value.fragmentIds.forEach(frag => {
+              mapping.set(frag.split(':')[0], segId)
+            })
+          })
+        })
+    
+        return mapping
+      }
+    
+    
+      static cacheFragments(ids) {
+        const authToken = localStorage.getItem('auth_token')
+        ids.forEach(id => {
+          fetch(`https://prodv1.flywire-daf.com/meshing/api/v1/table/fly_v31/manifest/${id}:0?verify=1&prepend_seg_ids=1&middle_auth_token=${authToken}`)
+          .then(res => res.json())
+          .then(res => {
+            res.fragments.forEach(frag => {
+              const url = `https://storage.googleapis.com/seunglab2/drosophila_v0/ws_190410_FAFB_v02_ws_size_threshold_200/fly_v31_meshes_v2_062619/${frag}?middle_auth_token=${authToken}`
+              fetch(url)
+            })
+          })
+        })
       }
     }
     // END of Dock class
