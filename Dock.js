@@ -1321,8 +1321,13 @@ class Dialog {
 
 
   #addStyles() {
+    const cssId = this.id + '-css'
+
+    if (document.getElementById(cssId)) return
+    
     let style = document.createElement('style')
     style.type = 'text/css'
+    style.id = cssId
     style.textContent = /*css*/`
       #${this.id} {
         position: relative;
