@@ -916,10 +916,16 @@
       }
 
 
-      static addCss(css) {
+      static addCss(css, id) {
         const style = document.createElement('style')
         style.type = 'text/css'
         style.textContent = css
+
+        if (id) {
+          if (document.getElementById(id)) return
+
+          style.id = id
+        }
         document.head.appendChild(style)
       }
 
