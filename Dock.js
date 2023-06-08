@@ -1317,7 +1317,7 @@ class Dialog {
   #addStyles() {
     let style = document.createElement('style')
     style.type = 'text/css'
-    style.textContent = (this.#css ? this.#css : '') + /*css*/`
+    style.textContent = /*css*/`
       #${this.id} {
         position: relative;
         top: 50%;
@@ -1382,7 +1382,7 @@ class Dialog {
         backdrop-filter: blur(10px);
         display: none;
       }
-    `
+    ` + (this.#css ? this.#css : '')
 
     document.head.appendChild(style)
   }
